@@ -10,15 +10,24 @@
 3. Импортировать воркфлоу из `n8n/workflows/discovery/`
 4. Запустить `scripts/setup/init-db.sql`
 
+### Dashboard
+
+```bash
+cd dashboard
+npm install
+npm run seed    # заполнить тестовыми данными
+npm run dev     # http://localhost:3000
+```
+
 ## Структура
 
 ```
 docs/           — документация (RU)
+dashboard/      — Next.js 16 веб-дашборд
 n8n/workflows/  — n8n воркфлоу (JSON)
 scripts/        — вспомогательные скрипты
 data/           — БД и сырые данные
 config/         — конфигурация источников и скоринга
-templates/      — шаблоны MVP (будущее)
 ```
 
 ## Стоимость
