@@ -1,0 +1,29 @@
+{
+  "weights": {
+    "market_size": 0.15,
+    "automation_feasibility": 0.20,
+    "pain_level": 0.15,
+    "competition": 0.10,
+    "willingness_to_pay": 0.10,
+    "margin_potential": 0.10,
+    "build_complexity": 0.10,
+    "timing": 0.10
+  },
+  "thresholds": {
+    "notify_telegram": 6.5,
+    "auto_validate": 8.0,
+    "auto_reject": 4.5
+  },
+  "verdicts": {
+    "above_8": "BUILD",
+    "6.5_to_8": "BET",
+    "4.5_to_6.5": "FLIP",
+    "below_4.5": "KILL"
+  },
+  "target_distribution": {
+    "BUILD": "~5%",
+    "BET": "~25%",
+    "FLIP": "~30%",
+    "KILL": "~40%"
+  }
+}

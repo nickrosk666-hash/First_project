@@ -1,0 +1,174 @@
+{
+  "_description": "Autonomy Dashboard Design Tokens. Source of truth for all colors, spacing, typography, and visual properties. Import this in code or reference in components.",
+
+  "colors": {
+    "background": {
+      "base":       "#0A0A0B",
+      "surface1":   "#141415",
+      "surface2":   "#1C1C1E",
+      "surface3":   "#252528"
+    },
+    "border": {
+      "default":    "#2A2A2D",
+      "hover":      "#3A3A3D",
+      "focus":      "#3B82F6"
+    },
+    "text": {
+      "primary":    "#ECECEC",
+      "secondary":  "#A1A1AA",
+      "muted":      "#71717A",
+      "inverse":    "#0A0A0B"
+    },
+    "accent": {
+      "blue":       "#3B82F6",
+      "purple":     "#8B5CF6",
+      "gradient":   "linear-gradient(135deg, #3B82F6, #8B5CF6)"
+    },
+    "verdict": {
+      "build":      { "solid": "#22C55E", "bg": "rgba(34,197,94,0.10)",  "label": "BUILD" },
+      "bet":        { "solid": "#EAB308", "bg": "rgba(234,179,8,0.10)",  "label": "BET" },
+      "flip":       { "solid": "#F97316", "bg": "rgba(249,115,22,0.10)", "label": "FLIP" },
+      "kill":       { "solid": "#EF4444", "bg": "rgba(239,68,68,0.10)",  "label": "KILL" }
+    },
+    "verdict_thresholds": {
+      "build": { "min": 8.0 },
+      "bet":   { "min": 6.5, "max": 8.0 },
+      "flip":  { "min": 4.5, "max": 6.5 },
+      "kill":  { "max": 4.5 }
+    },
+    "gamification": {
+      "gold":       "#D4A574",
+      "gold_bright":"#FBBF24",
+      "xp_gradient":"linear-gradient(90deg, #3B82F6, #8B5CF6)"
+    },
+    "source": {
+      "google":      "#4285F4",
+      "hackernews":  "#FF6600",
+      "reddit":      "#FF4500",
+      "youtube":     "#FF0000",
+      "github":      "#E6E6E6",
+      "devto":       "#3B49DF",
+      "producthunt": "#DA552F",
+      "techcrunch":  "#0A9B2C",
+      "news":        "#A1A1AA"
+    },
+    "semantic": {
+      "success":    "#22C55E",
+      "warning":    "#EAB308",
+      "error":      "#EF4444",
+      "info":       "#3B82F6"
+    }
+  },
+
+  "typography": {
+    "font_family": {
+      "sans":  "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      "mono":  "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace"
+    },
+    "scale": {
+      "h1":      { "size": "28px", "weight": 600, "tracking": "-0.02em", "family": "sans" },
+      "h2":      { "size": "20px", "weight": 600, "tracking": "-0.01em", "family": "sans" },
+      "h3":      { "size": "16px", "weight": 500, "tracking": "0",       "family": "sans" },
+      "body":    { "size": "14px", "weight": 400, "tracking": "0",       "family": "sans" },
+      "caption": { "size": "12px", "weight": 400, "tracking": "0.01em",  "family": "sans" },
+      "score":   { "size": "32px", "weight": 600, "tracking": "0",       "family": "mono" },
+      "score_sm":{ "size": "18px", "weight": 600, "tracking": "0",       "family": "mono" },
+      "number":  { "size": "14px", "weight": 500, "tracking": "0",       "family": "mono" },
+      "badge":   { "size": "11px", "weight": 600, "tracking": "0.02em",  "family": "sans" }
+    }
+  },
+
+  "spacing": {
+    "unit": 4,
+    "scale": {
+      "xs": 4,
+      "sm": 8,
+      "md": 12,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24,
+      "3xl": 32,
+      "4xl": 40,
+      "5xl": 48,
+      "6xl": 64
+    },
+    "card_padding": {
+      "compact": 16,
+      "default": 20,
+      "large":   24
+    },
+    "card_gap": {
+      "grid": 12,
+      "list": 8
+    },
+    "section_gap": 32,
+    "page_padding": {
+      "mobile": 24,
+      "desktop": 32
+    }
+  },
+
+  "layout": {
+    "sidebar": {
+      "width_expanded": 240,
+      "width_collapsed": 64,
+      "collapse_breakpoint": 1024
+    },
+    "topbar": {
+      "height": 56
+    },
+    "grid": {
+      "columns_desktop": 12,
+      "columns_tablet": 8,
+      "columns_mobile": 4,
+      "gap": 12
+    }
+  },
+
+  "radius": {
+    "button": 8,
+    "card": 12,
+    "modal": 16,
+    "pill": 9999,
+    "avatar": "50%",
+    "input": 8
+  },
+
+  "animation": {
+    "card_enter":       { "duration": 200, "easing": "ease-out" },
+    "card_stagger":     { "delay": 50 },
+    "hover":            { "duration": 150, "easing": "ease" },
+    "score_reveal":     { "duration": 1200, "easing": "ease-out" },
+    "xp_float":         { "duration": 800, "easing": "ease-out", "y_offset": -40 },
+    "progress_fill":    { "duration": 600, "easing": "spring(0.5)" },
+    "confetti":         { "duration": 2000, "particles": 60, "spread": 70 },
+    "achievement_toast":{ "duration": 300, "easing": "ease-out", "auto_dismiss": 5000 },
+    "page_transition":  { "duration": 150, "easing": "ease" },
+    "skeleton_shimmer": { "duration": 1500, "easing": "linear" }
+  },
+
+  "elevation": {
+    "_note": "On dark backgrounds use border-color elevation, not shadows",
+    "card_default": {
+      "background": "#141415",
+      "border": "1px solid #2A2A2D"
+    },
+    "card_hover": {
+      "background": "#1C1C1E",
+      "border": "1px solid #3A3A3D"
+    },
+    "card_legendary": {
+      "border": "1px solid rgba(251, 191, 36, 0.3)",
+      "box_shadow": "0 0 20px rgba(251, 191, 36, 0.08)"
+    },
+    "modal_overlay": {
+      "background": "rgba(0, 0, 0, 0.6)",
+      "backdrop_filter": "blur(16px)"
+    },
+    "modal": {
+      "background": "rgba(20, 20, 21, 0.9)",
+      "border": "1px solid #2A2A2D",
+      "backdrop_filter": "blur(20px)"
+    }
+  }
+}

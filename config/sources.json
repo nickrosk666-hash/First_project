@@ -1,0 +1,138 @@
+{
+  "google_news_rss": {
+    "enabled": true,
+    "schedule": "0 6 * * *",
+    "feeds": [
+      {
+        "name": "saas_startups",
+        "url": "https://news.google.com/rss/search?q=saas+startup+launched&when:7d&hl=en&gl=US&ceid=US:en"
+      },
+      {
+        "name": "new_tools",
+        "url": "https://news.google.com/rss/search?q=new+software+tool+product&when:7d&hl=en&gl=US&ceid=US:en"
+      },
+      {
+        "name": "micro_saas",
+        "url": "https://news.google.com/rss/search?q=micro+saas+indie+hacker&when:7d&hl=en&gl=US&ceid=US:en"
+      },
+      {
+        "name": "ai_tools",
+        "url": "https://news.google.com/rss/search?q=ai+tool+automation+launch&when:7d&hl=en&gl=US&ceid=US:en"
+      },
+      {
+        "name": "startup_funding",
+        "url": "https://news.google.com/rss/search?q=startup+funding+series+seed&when:7d&hl=en&gl=US&ceid=US:en"
+      }
+    ]
+  },
+
+  "hackernews": {
+    "enabled": true,
+    "schedule": "0 7 * * *",
+    "firebase_base_url": "https://hacker-news.firebaseio.com/v0",
+    "algolia_base_url": "https://hn.algolia.com/api/v1",
+    "endpoints": ["topstories", "showstories", "beststories"],
+    "algolia_queries": [
+      "Show HN",
+      "launched my",
+      "side project",
+      "built a tool",
+      "saas"
+    ],
+    "min_score": 50,
+    "max_items_per_run": 100
+  },
+
+  "reddit": {
+    "enabled": true,
+    "schedule": "0 8 * * *",
+    "subreddits": [
+      "SaaS", "startups", "Entrepreneur", "smallbusiness",
+      "webdev", "sideproject", "indiehackers", "microsaas", "nocode"
+    ],
+    "pain_queries": [
+      "I wish there was",
+      "is there a tool",
+      "someone should build",
+      "I would pay for",
+      "looking for a tool",
+      "frustrated with",
+      "why is there no"
+    ],
+    "queries_per_day": 5,
+    "min_score": 10,
+    "time_filter": "week"
+  },
+
+  "youtube_rss": {
+    "enabled": true,
+    "schedule": "0 9 * * *",
+    "channels": [
+      {"name": "MicroConf", "id": "UCHoBKQDRkJcOY2BO47q5Ruw"},
+      {"name": "MyFirstMillion", "id": "UCKEBikSRoNHIxjOCN3_BHBA"},
+      {"name": "SaaStr", "id": "UCwOILzAcxK5CM2M7oRBuASg"},
+      {"name": "IndieHackers", "id": "UC36kR5iBJKEHsIpMFpgRpMg"},
+      {"name": "YCombinator", "id": "UCcefcZRL2oaA_uBNeo5UOWg"}
+    ],
+    "feed_template": "https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+  },
+
+  "youtube_api": {
+    "enabled": true,
+    "schedule": "0 10 * * *",
+    "search_queries": [
+      "best saas tools 2026",
+      "micro saas ideas",
+      "new software tool review",
+      "saas that makes money"
+    ],
+    "max_results_per_query": 25,
+    "daily_quota_limit": 5000
+  },
+
+  "github": {
+    "enabled": true,
+    "schedule": "0 11 * * *",
+    "min_stars": 10,
+    "lookback_days": 7,
+    "search_keywords": ["saas", "tool", "platform", "automation", "boilerplate", "starter-kit"]
+  },
+
+  "devto": {
+    "enabled": true,
+    "schedule": "30 11 * * *",
+    "base_url": "https://dev.to/api/articles",
+    "tags": ["saas", "startup", "sideproject", "buildinpublic", "nocode"],
+    "top_period": 7
+  },
+
+  "news_rss": {
+    "enabled": true,
+    "schedule": "0 12 * * *",
+    "feeds": [
+      {"name": "techcrunch_startups", "url": "https://techcrunch.com/category/startups/feed/"},
+      {"name": "techcrunch_venture", "url": "https://techcrunch.com/category/venture/feed/"},
+      {"name": "techcrunch_ai", "url": "https://techcrunch.com/category/artificial-intelligence/feed/"},
+      {"name": "techcrunch_funding", "url": "https://techcrunch.com/tag/funding/feed/"}
+    ]
+  },
+
+  "producthunt": {
+    "enabled": true,
+    "schedule": "0 13 * * *",
+    "min_votes": 50,
+    "categories": ["DEVELOPER_TOOLS", "SAAS", "PRODUCTIVITY", "ARTIFICIAL_INTELLIGENCE"]
+  },
+
+  "_aggregator": {
+    "schedule": "0 15 * * *",
+    "note": "Runs after all scrapers finish"
+  },
+
+  "_scorer": {
+    "schedule": "0 17 * * *",
+    "model": "claude-haiku-4-5-20251001",
+    "batch_size": 20,
+    "note": "Only workflow that calls Claude API"
+  }
+}

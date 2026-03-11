@@ -1,0 +1,113 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-bg-base: #0A0A0B;
+  --color-bg-surface1: #141415;
+  --color-bg-surface2: #1C1C1E;
+  --color-bg-surface3: #252528;
+
+  --color-border-default: #2A2A2D;
+  --color-border-hover: #3A3A3D;
+  --color-border-focus: #3B82F6;
+
+  --color-text-primary: #ECECEC;
+  --color-text-secondary: #A1A1AA;
+  --color-text-muted: #71717A;
+  --color-text-inverse: #0A0A0B;
+
+  --color-accent-blue: #3B82F6;
+  --color-accent-purple: #8B5CF6;
+
+  --color-verdict-build: #22C55E;
+  --color-verdict-bet: #EAB308;
+  --color-verdict-flip: #F97316;
+  --color-verdict-kill: #EF4444;
+
+  --color-game-gold: #D4A574;
+  --color-game-gold-bright: #FBBF24;
+  --color-game-bronze: #CD7F32;
+  --color-game-silver: #C0C0C0;
+  --color-game-diamond: #B9F2FF;
+
+  --color-source-google: #4285F4;
+  --color-source-hackernews: #FF6600;
+  --color-source-reddit: #FF4500;
+  --color-source-youtube: #FF0000;
+  --color-source-github: #E6E6E6;
+  --color-source-devto: #3B49DF;
+  --color-source-producthunt: #DA552F;
+  --color-source-techcrunch: #0A9B2C;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --radius-btn: 8px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
+  --radius-pill: 9999px;
+
+  --shadow-legendary: 0 0 20px rgba(251, 191, 36, 0.08);
+  --shadow-achievement: 0 0 20px rgba(251, 191, 36, 0.1);
+
+  --animate-shimmer: shimmer 1.5s linear infinite;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-flame: flame-sway 2s ease-in-out infinite;
+  --animate-float-up: float-up 0.8s ease-out forwards;
+  --animate-slide-in: slide-in-right 0.3s ease-out;
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.08); }
+    50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.15); }
+  }
+  @keyframes flame-sway {
+    0%, 100% { transform: translateX(0) rotate(0deg); }
+    25% { transform: translateX(1px) rotate(2deg); }
+    75% { transform: translateX(-1px) rotate(-2deg); }
+  }
+  @keyframes float-up {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-40px); opacity: 0; }
+  }
+  @keyframes slide-in-right {
+    0% { transform: translateX(100%); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+}
+
+* {
+  border-color: var(--color-border-default);
+}
+
+body {
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A2A2D;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3A3A3D;
+}
+
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: #ECECEC;
+}

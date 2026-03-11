@@ -1,0 +1,72 @@
+{
+  "discovery_keywords": {
+    "product_signals": [
+      "launched", "built", "shipping", "released", "open source",
+      "new tool", "new app", "just launched", "side project",
+      "Show HN", "I made", "I built", "introducing"
+    ],
+    "pain_signals": [
+      "I wish there was", "is there a tool", "someone should build",
+      "I would pay for", "looking for", "frustrated with",
+      "why is there no", "hate using", "terrible experience",
+      "need a better", "alternative to", "replacement for"
+    ],
+    "trend_signals": [
+      "growing", "trending", "exploding", "rising demand",
+      "everyone is using", "game changer", "breakthrough"
+    ],
+    "market_signals": [
+      "raised", "funding", "series a", "seed round", "acquired",
+      "revenue", "MRR", "ARR", "customers", "users"
+    ]
+  },
+
+  "niche_categories": [
+    "developer-tools",
+    "productivity",
+    "marketing-automation",
+    "sales-tools",
+    "analytics",
+    "ai-ml",
+    "no-code",
+    "fintech",
+    "hr-tech",
+    "edtech",
+    "healthtech",
+    "e-commerce-tools",
+    "communication",
+    "security",
+    "devops",
+    "design-tools",
+    "content-creation",
+    "customer-support",
+    "project-management",
+    "data-tools"
+  ],
+
+  "exclude_keywords": [
+    "crypto", "nft", "blockchain", "web3", "token",
+    "gambling", "casino", "betting",
+    "adult", "dating",
+    "dropshipping"
+  ],
+
+  "niche_focus": {
+    "best_bet": [
+      "ai vertical saas", "ai automation", "ai workflow",
+      "ai assistant for", "ai agent", "ai copilot"
+    ],
+    "blue_ocean": [
+      "hvac software", "pest control software", "plumbing software",
+      "landlord software", "property management small",
+      "veterinary software", "vet clinic management",
+      "compliance automation smb", "regulatory tracking",
+      "trades business software", "field service management"
+    ],
+    "high_growth_verticals": [
+      "legal tech", "proptech", "insurtech", "regtech",
+      "construction tech", "agritech", "govtech",
+      "dental software", "clinic management"
+    ]
+  }
+}

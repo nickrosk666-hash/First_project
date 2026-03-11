@@ -1,0 +1,10 @@
+.env
+data/ideas.db
+data/raw/
+data/reports/
+n8n/credentials/
+__pycache__/
+*.pyc
+node_modules/
+.next/
+.n8n/
