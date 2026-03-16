@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { MOCK_IDEAS } from '@/lib/mock-data';
+import { mockIdeas } from '@/lib/mock-data';
 import fs from 'fs';
 
 const IDEAS_FILE = process.env.IDEAS_FILE_PATH || 'C:/AI Cloude/Projects/autonomy/data/ideas.json';
@@ -20,5 +20,5 @@ export async function GET() {
     return NextResponse.json({ ideas: fileIdeas, source: 'live' });
   }
 
-  return NextResponse.json({ ideas: MOCK_IDEAS, source: 'mock' });
+  return NextResponse.json({ ideas: mockIdeas, source: 'mock' });
 }

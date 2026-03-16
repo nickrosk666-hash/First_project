@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { MOCK_IDEAS } from '@/lib/mock-data';
+import { mockIdeas } from '@/lib/mock-data';
 import fs from 'fs';
 
 const IDEAS_FILE = process.env.IDEAS_FILE_PATH || 'C:/AI Cloude/Projects/autonomy/data/ideas.json';
@@ -20,7 +20,7 @@ export async function GET(
     // fall through to mock
   }
 
-  const mockIdea = MOCK_IDEAS.find(i => i.id === numId);
+  const mockIdea = mockIdeas.find(i => i.id === numId);
   if (mockIdea) return NextResponse.json(mockIdea);
 
   return NextResponse.json({ error: 'Not found' }, { status: 404 });
