@@ -12,18 +12,24 @@
       "name": "Webhook: Запустить идею",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "launch-idea-webhook"
     },
     {
       "parameters": {
-        "jsCode": "// ⚠️ ВСТАВЬ СВОЙ API КЛЮЧ ANTHROPIC ЗДЕСЬ:\nconst ANTHROPIC_API_KEY = 'PASTE_YOUR_KEY_HERE';\n\nconst body = $input.first().json.body || $input.first().json;\nconst title = body.title || '';\nconst description = body.description || '';\n\nconst prompt = `You are a startup builder. Create a complete product brief and landing page for this SaaS idea.\n\nIdea: ${title}\nDescription: ${description}\n\nGenerate a JSON response with this EXACT structure (no markdown, no extra text):\n{\n  \"productName\": \"Short catchy product name\",\n  \"tagline\": \"One compelling line that sells the product\",\n  \"problem\": \"The painful problem this solves in 2 sentences\",\n  \"solution\": \"How this product solves it in 2 sentences\",\n  \"targetAudience\": \"Exactly who this is for (be specific)\",\n  \"pricing\": [{\"plan\": \"Starter\", \"price\": \"$29/mo\", \"features\": [\"Feature 1\", \"Feature 2\", \"Feature 3\"]}, {\"plan\": \"Pro\", \"price\": \"$79/mo\", \"features\": [\"Feature 1\", \"Feature 2\", \"Feature 3\", \"Feature 4\"]}],\n  \"features\": [\"Feature 1 with benefit\", \"Feature 2 with benefit\", \"Feature 3 with benefit\", \"Feature 4 with benefit\", \"Feature 5 with benefit\", \"Feature 6 with benefit\"],\n  \"techStack\": [\"Next.js\", \"TypeScript\", \"Tailwind CSS\", \"Stripe\", \"Supabase\"],\n  \"mvpSteps\": [{\"day\": \"День 1-2\", \"task\": \"Setup & Auth\"}, {\"day\": \"День 3-5\", \"task\": \"Core feature\"}, {\"day\": \"День 6-7\", \"task\": \"Payments & Launch\"}],\n  \"landingPageHtml\": \"COMPLETE single-file HTML landing page with all inline CSS. Dark theme (#0a0a0a background, white text). Must include: 1) Hero section with big headline and CTA button, 2) Problem section, 3) Features grid (6 features), 4) Pricing cards (2 plans), 5) Footer. Make it beautiful and ready to publish.\",\n  \"domain\": \"suggested-domain-name.com\"\n}`;\n\nconst response = await fetch('https://api.anthropic.com/v1/messages', {\n  method: 'POST',\n  headers: {\n    'x-api-key': ANTHROPIC_API_KEY,\n    'anthropic-version': '2023-06-01',\n    'content-type': 'application/json'\n  },\n  body: JSON.stringify({\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 4000,\n    messages: [{ role: 'user', content: prompt }]\n  })\n});\n\nif (!response.ok) {\n  const err = await response.text();\n  throw new Error('Anthropic error ' + response.status + ': ' + err);\n}\n\nconst data = await response.json();\nlet product = null;\n\nif (data.content && data.content[0] && data.content[0].text) {\n  const text = data.content[0].text.trim();\n  const match = text.match(/\\{[\\s\\S]*\\}/);\n  if (match) {\n    try { product = JSON.parse(match[0]); } catch(e) {}\n  }\n}\n\nif (!product) throw new Error('Could not parse product from Claude response');\n\nreturn [{\n  json: {\n    ...product,\n    ideaId: body.ideaId,\n    ideaTitle: title,\n    generatedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const ANTHROPIC_API_KEY = 'PASTE_YOUR_KEY_HERE';\n\nconst body = $input.first().json.body || $input.first().json;\nconst title = body.title || '';\nconst description = body.description || '';\n\nconst prompt = 'You are a startup builder. Create a complete product brief and landing page for this SaaS idea.\\n\\nIdea: ' + title + '\\nDescription: ' + description + '\\n\\nGenerate a JSON response with this EXACT structure (no markdown, no extra text):\\n{\\n  \"productName\": \"Short catchy product name\",\\n  \"tagline\": \"One compelling line that sells the product\",\\n  \"problem\": \"The painful problem this solves in 2 sentences\",\\n  \"solution\": \"How this product solves it in 2 sentences\",\\n  \"targetAudience\": \"Exactly who this is for (be specific)\",\\n  \"pricing\": [{\"plan\": \"Starter\", \"price\": \"$29/mo\", \"features\": [\"Feature 1\", \"Feature 2\", \"Feature 3\"]}, {\"plan\": \"Pro\", \"price\": \"$79/mo\", \"features\": [\"Feature 1\", \"Feature 2\", \"Feature 3\", \"Feature 4\"]}],\\n  \"features\": [\"Feature 1 with benefit\", \"Feature 2 with benefit\", \"Feature 3 with benefit\", \"Feature 4 with benefit\", \"Feature 5 with benefit\", \"Feature 6 with benefit\"],\\n  \"techStack\": [\"Next.js\", \"TypeScript\", \"Tailwind CSS\", \"Stripe\", \"Supabase\"],\\n  \"mvpSteps\": [{\"day\": \"День 1-2\", \"task\": \"Setup & Auth\"}, {\"day\": \"День 3-5\", \"task\": \"Core feature\"}, {\"day\": \"День 6-7\", \"task\": \"Payments & Launch\"}],\\n  \"landingPageHtml\": \"COMPLETE single-file HTML landing page with all inline CSS. Dark theme (#0a0a0a background, white text). Must include: 1) Hero section with big headline and CTA button, 2) Problem section, 3) Features grid (6 features), 4) Pricing cards (2 plans), 5) Footer. Make it beautiful and ready to publish.\",\\n  \"domain\": \"suggested-domain-name.com\"\\n}';\n\nconst bodyStr = JSON.stringify({\n  model: 'claude-haiku-4-5-20251001',\n  max_tokens: 4000,\n  messages: [{ role: 'user', content: prompt }]\n});\n\nconst result = await new Promise((resolve, reject) => {\n  const req = require('https').request({\n    hostname: 'api.anthropic.com',\n    path: '/v1/messages',\n    method: 'POST',\n    headers: {\n      'x-api-key': ANTHROPIC_API_KEY,\n      'anthropic-version': '2023-06-01',\n      'content-type': 'application/json',\n      'content-length': Buffer.byteLength(bodyStr)\n    }\n  }, res => {\n    let d = '';\n    res.on('data', c => d += c);\n    res.on('end', () => resolve({ status: res.statusCode, body: d }));\n  });\n  req.on('error', reject);\n  req.write(bodyStr);\n  req.end();\n});\n\nif (result.status !== 200) throw new Error('Anthropic error ' + result.status + ': ' + result.body);\n\nconst data = JSON.parse(result.body);\nlet product = null;\n\nif (data.content && data.content[0] && data.content[0].text) {\n  const text = data.content[0].text.trim();\n  const match = text.match(/\\{[\\s\\S]*\\}/);\n  if (match) {\n    try { product = JSON.parse(match[0]); } catch(e) {}\n  }\n}\n\nif (!product) throw new Error('Could not parse product from Claude response');\n\nreturn [{\n  json: {\n    ...product,\n    ideaId: body.ideaId,\n    ideaTitle: title,\n    generatedAt: new Date().toISOString()\n  }\n}];\n"
       },
       "id": "claude-generate",
-      "name": "Claude: Генерировать продукт",
+      "name": "Claude: Генерировать продукт (https)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
@@ -33,7 +39,10 @@
       "name": "Сохранить проект",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 300]
+      "position": [
+        680,
+        300
+      ]
     },
     {
       "parameters": {
@@ -44,15 +53,53 @@
       "name": "Ответить клиенту",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ]
     }
   ],
   "connections": {
-    "Webhook: Запустить идею": { "main": [[{ "node": "Claude: Генерировать продукт", "type": "main", "index": 0 }]] },
-    "Claude: Генерировать продукт": { "main": [[{ "node": "Сохранить проект", "type": "main", "index": 0 }]] },
-    "Сохранить проект": { "main": [[{ "node": "Ответить клиенту", "type": "main", "index": 0 }]] }
+    "Webhook: Запустить идею": {
+      "main": [
+        [
+          {
+            "node": "Claude: Генерировать продукт (https)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сохранить проект": {
+      "main": [
+        [
+          {
+            "node": "Ответить клиенту",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Генерировать продукт (https)": {
+      "main": [
+        [
+          {
+            "node": "Сохранить проект",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "active": true,
-  "settings": { "executionOrder": "v1" },
-  "tags": ["launch", "builder"]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "launch",
+    "builder"
+  ]
 }

@@ -5,9 +5,18 @@
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "cronExpression", "expression": "0 8 * * *" },
-            { "field": "cronExpression", "expression": "0 14 * * *" },
-            { "field": "cronExpression", "expression": "0 20 * * *" }
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 14 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 20 * * *"
+            }
           ]
         }
       },
@@ -15,43 +24,61 @@
       "name": "Расписание (3x день)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [240, 300]
+      "position": [
+        240,
+        300
+      ]
     },
     {
       "parameters": {
         "url": "https://news.google.com/rss/search?q=saas+automation+ai+tools+small+business&hl=en-US&gl=US&ceid=US:en",
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "google-news-saas",
       "name": "Google News: SaaS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 160]
+      "position": [
+        480,
+        160
+      ]
     },
     {
       "parameters": {
         "url": "https://news.google.com/rss/search?q=niche+software+vertical+saas+workflow+automation&hl=en-US&gl=US&ceid=US:en",
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "google-news-vertical",
       "name": "Google News: Vertical",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 300]
+      "position": [
+        480,
+        300
+      ]
     },
     {
       "parameters": {
         "url": "https://www.reddit.com/r/SaaS/new.json?limit=25",
         "options": {
           "timeout": 10000,
-          "headers": { "User-Agent": "Mozilla/5.0 Autonomy-Bot/1.0" }
+          "headers": {
+            "User-Agent": "Mozilla/5.0 Autonomy-Bot/1.0"
+          }
         }
       },
       "id": "reddit-saas",
       "name": "Reddit r/SaaS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 440]
+      "position": [
+        480,
+        440
+      ]
     },
     {
       "parameters": {
@@ -61,17 +88,23 @@
       "name": "Парсинг и фильтр",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [720, 300]
+      "position": [
+        720,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// ⚠️ ВСТАВЬ СВОЙ API КЛЮЧ ANTHROPIC ЗДЕСЬ:\nconst ANTHROPIC_API_KEY = 'PASTE_YOUR_KEY_HERE';\n\nconst title = $json.title || '';\nconst source = $json.source || '';\nconst url = $json.url || '';\n\nconst prompt = 'Score this SaaS idea on 8 criteria (0-10 each).\\n\\nIdea: ' + title + '\\n\\nCriteria:\\n- market: market size (10=huge)\\n- automation: AI automation potential (10=fully automated)\\n- pain: pain intensity (10=critical)\\n- competition: low competition = high score (10=no competition)\\n- willingnessToPay: willingness to pay (10=high)\\n- margin: profit margin (10=90%+)\\n- build: build complexity, low = easy MVP (10=very easy)\\n- timing: market timing (10=perfect now)\\n\\nReply ONLY with this exact JSON, no markdown:\\n{\"market\":7,\"automation\":8,\"pain\":6,\"competition\":5,\"willingnessToPay\":7,\"margin\":8,\"build\":7,\"timing\":6,\"summary\":\"One sentence about this idea in Russian\"}';\n\nconst response = await fetch('https://api.anthropic.com/v1/messages', {\n  method: 'POST',\n  headers: {\n    'x-api-key': ANTHROPIC_API_KEY,\n    'anthropic-version': '2023-06-01',\n    'content-type': 'application/json'\n  },\n  body: JSON.stringify({\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 400,\n    messages: [{ role: 'user', content: prompt }]\n  })\n});\n\nif (!response.ok) {\n  const err = await response.text();\n  throw new Error('Anthropic error ' + response.status + ': ' + err);\n}\n\nconst data = await response.json();\nlet scoreData = null;\n\nif (data.content && data.content[0] && data.content[0].text) {\n  const text = data.content[0].text.trim();\n  const match = text.match(/\\{[\\s\\S]*?\\}/);\n  if (match) scoreData = JSON.parse(match[0]);\n}\n\nif (!scoreData) throw new Error('Could not parse Claude response: ' + JSON.stringify(data));\n\nconst weights = { market:0.15, automation:0.20, pain:0.15, competition:0.10, willingnessToPay:0.10, margin:0.10, build:0.10, timing:0.10 };\nlet composite = 0;\nfor (const [k, w] of Object.entries(weights)) composite += (scoreData[k] || 0) * w;\ncomposite = Math.round(composite * 10) / 10;\n\nlet verdict = 'KILL';\nif (composite >= 8.0) verdict = 'BUILD';\nelse if (composite >= 6.5) verdict = 'BET';\nelse if (composite >= 4.5) verdict = 'FLIP';\n\nreturn [{\n  json: {\n    id: Date.now() + Math.floor(Math.random() * 1000),\n    title,\n    description: scoreData.summary || '',\n    source,\n    sourceUrl: url,\n    scoreComposite: composite,\n    verdict,\n    verdictReason: scoreData.summary || '',\n    status: 'new',\n    discoveredAt: new Date().toISOString(),\n    scores: {\n      market: scoreData.market || 0,\n      automation: scoreData.automation || 0,\n      pain: scoreData.pain || 0,\n      competition: scoreData.competition || 0,\n      willingnessToPay: scoreData.willingnessToPay || 0,\n      margin: scoreData.margin || 0,\n      build: scoreData.build || 0,\n      timing: scoreData.timing || 0\n    }\n  }\n}];"
+        "jsCode": "// ВСТАВЬ СВОЙ API КЛЮЧ ANTHROPIC ЗДЕСЬ (в кавычках!):\r\nconst ANTHROPIC_API_KEY = 'PASTE_YOUR_KEY_HERE';\r\n\r\nconst title = $json.title || '';\r\nconst source = $json.source || '';\r\nconst url = $json.url || '';\r\n\r\nconst prompt = 'Score this SaaS idea on 8 criteria (0-10 each).\\n\\nIdea: ' + title + '\\n\\nCriteria:\\n- market: market size (10=huge)\\n- automation: AI automation potential (10=fully automated)\\n- pain: pain intensity (10=critical)\\n- competition: low competition = high score (10=no competition)\\n- willingnessToPay: willingness to pay (10=high)\\n- margin: profit margin (10=90%+)\\n- build: build complexity, low = easy MVP (10=very easy)\\n- timing: market timing (10=perfect now)\\n\\nReply ONLY with this exact JSON, no markdown:\\n{\"market\":7,\"automation\":8,\"pain\":6,\"competition\":5,\"willingnessToPay\":7,\"margin\":8,\"build\":7,\"timing\":6,\"summary\":\"One sentence about this idea in Russian\"}';\r\n\r\nconst bodyStr = JSON.stringify({\r\n  model: 'claude-haiku-4-5-20251001',\r\n  max_tokens: 400,\r\n  messages: [{ role: 'user', content: prompt }]\r\n});\r\n\r\nconst result = await new Promise((resolve, reject) => {\r\n  const https = require('https');\r\n  const req = https.request({\r\n    hostname: 'api.anthropic.com',\r\n    path: '/v1/messages',\r\n    method: 'POST',\r\n    headers: {\r\n      'x-api-key': ANTHROPIC_API_KEY,\r\n      'anthropic-version': '2023-06-01',\r\n      'content-type': 'application/json',\r\n      'content-length': Buffer.byteLength(bodyStr)\r\n    }\r\n  }, res => {\r\n    let d = '';\r\n    res.on('data', c => d += c);\r\n    res.on('end', () => resolve({ status: res.statusCode, body: d }));\r\n  });\r\n  req.on('error', reject);\r\n  req.write(bodyStr);\r\n  req.end();\r\n});\r\n\r\nif (result.status !== 200) throw new Error('Anthropic API error ' + result.status + ': ' + result.body);\r\n\r\nconst data = JSON.parse(result.body);\r\nlet scoreData = null;\r\n\r\nif (data.content && data.content[0] && data.content[0].text) {\r\n  const text = data.content[0].text.trim();\r\n  const match = text.match(/\\{[\\s\\S]*?\\}/);\r\n  if (match) scoreData = JSON.parse(match[0]);\r\n}\r\n\r\nif (!scoreData) throw new Error('Could not parse Claude response');\r\n\r\nconst weights = { market:0.15, automation:0.20, pain:0.15, competition:0.10, willingnessToPay:0.10, margin:0.10, build:0.10, timing:0.10 };\r\nlet composite = 0;\r\nfor (const [k, w] of Object.entries(weights)) composite += (scoreData[k] || 0) * w;\r\ncomposite = Math.round(composite * 10) / 10;\r\n\r\nlet verdict = 'KILL';\r\nif (composite >= 8.0) verdict = 'BUILD';\r\nelse if (composite >= 6.5) verdict = 'BET';\r\nelse if (composite >= 4.5) verdict = 'FLIP';\r\n\r\nreturn [{\r\n  json: {\r\n    id: Date.now() + Math.floor(Math.random() * 1000),\r\n    title,\r\n    description: scoreData.summary || '',\r\n    source,\r\n    sourceUrl: url,\r\n    scoreComposite: composite,\r\n    verdict,\r\n    verdictReason: scoreData.summary || '',\r\n    status: 'new',\r\n    discoveredAt: new Date().toISOString(),\r\n    scores: {\r\n      market: scoreData.market || 0,\r\n      automation: scoreData.automation || 0,\r\n      pain: scoreData.pain || 0,\r\n      competition: scoreData.competition || 0,\r\n      willingnessToPay: scoreData.willingnessToPay || 0,\r\n      margin: scoreData.margin || 0,\r\n      build: scoreData.build || 0,\r\n      timing: scoreData.timing || 0\r\n    }\r\n  }\r\n}];\r\n"
       },
       "id": "claude-score",
-      "name": "Claude: Скоринг (fetch)",
+      "name": "Claude: Скоринг",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 300]
+      "position": [
+        960,
+        300
+      ]
     },
     {
       "parameters": {
@@ -81,24 +114,97 @@
       "name": "Сохранить в файл",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, 300]
+      "position": [
+        1440,
+        300
+      ]
     }
   ],
   "connections": {
     "Расписание (3x день)": {
-      "main": [[
-        { "node": "Google News: SaaS", "type": "main", "index": 0 },
-        { "node": "Google News: Vertical", "type": "main", "index": 0 },
-        { "node": "Reddit r/SaaS", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Google News: SaaS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google News: Vertical",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Reddit r/SaaS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Google News: SaaS": { "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]] },
-    "Google News: Vertical": { "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]] },
-    "Reddit r/SaaS": { "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]] },
-    "Парсинг и фильтр": { "main": [[{ "node": "Claude: Скоринг (fetch)", "type": "main", "index": 0 }]] },
-    "Claude: Скоринг (fetch)": { "main": [[{ "node": "Сохранить в файл", "type": "main", "index": 0 }]] }
+    "Google News: SaaS": {
+      "main": [
+        [
+          {
+            "node": "Парсинг и фильтр",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google News: Vertical": {
+      "main": [
+        [
+          {
+            "node": "Парсинг и фильтр",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reddit r/SaaS": {
+      "main": [
+        [
+          {
+            "node": "Парсинг и фильтр",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Парсинг и фильтр": {
+      "main": [
+        [
+          {
+            "node": "Claude: Скоринг",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude: Скоринг": {
+      "main": [
+        [
+          {
+            "node": "Сохранить в файл",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "active": false,
-  "settings": { "executionOrder": "v1", "saveManualExecutions": true },
-  "tags": ["discovery", "autonomous"]
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": [
+    "discovery",
+    "autonomous"
+  ]
 }
