@@ -19,10 +19,8 @@
     },
     {
       "parameters": {
-        "url": "https://news.google.com/rss/search?q=saas+automation+ai+tools&hl=en-US&gl=US&ceid=US:en",
-        "options": {
-          "timeout": 10000
-        }
+        "url": "https://news.google.com/rss/search?q=saas+automation+ai+tools+small+business&hl=en-US&gl=US&ceid=US:en",
+        "options": { "timeout": 10000 }
       },
       "id": "google-news-saas",
       "name": "Google News: SaaS",
@@ -32,29 +30,14 @@
     },
     {
       "parameters": {
-        "url": "https://news.google.com/rss/search?q=vertical+saas+niche+software+small+business&hl=en-US&gl=US&ceid=US:en",
-        "options": {
-          "timeout": 10000
-        }
+        "url": "https://news.google.com/rss/search?q=niche+software+vertical+saas+workflow+automation&hl=en-US&gl=US&ceid=US:en",
+        "options": { "timeout": 10000 }
       },
       "id": "google-news-vertical",
       "name": "Google News: Vertical",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [480, 300]
-    },
-    {
-      "parameters": {
-        "url": "https://hacker-news.firebaseio.com/v0/topstories.json",
-        "options": {
-          "timeout": 10000
-        }
-      },
-      "id": "hackernews-top",
-      "name": "HackerNews Top",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [480, 440]
     },
     {
       "parameters": {
@@ -70,168 +53,69 @@
       "name": "Reddit r/SaaS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 580]
+      "position": [480, 440]
     },
     {
       "parameters": {
-        "jsCode": "// Parse Google News RSS XML\nconst items = [];\nfor (const input of $input.all()) {\n  const body = input.json.data || '';\n  const regex = /<item>[\\s\\S]*?<title><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/title>[\\s\\S]*?<link>([\\s\\S]*?)<\\/link>[\\s\\S]*?<pubDate>([\\s\\S]*?)<\\/pubDate>[\\s\\S]*?<\\/item>/g;\n  let match;\n  while ((match = regex.exec(body)) !== null) {\n    items.push({\n      json: {\n        title: match[1].trim(),\n        url: match[2].trim(),\n        source: 'Google News',\n        publishedAt: match[3].trim(),\n        raw: match[1]\n      }\n    });\n  }\n}\nreturn items.length > 0 ? items : [{ json: { title: 'No items', url: '', source: 'Google News', publishedAt: new Date().toISOString(), raw: '' } }];"
+        "jsCode": "// Parse all RSS/Reddit sources into unified format\nconst items = [];\n\nfor (const input of $input.all()) {\n  const body = input.json.data || input.json.body || '';\n  const nodeName = input.pairedItem ? '' : '';\n\n  // Try RSS XML parsing\n  if (typeof body === 'string' && body.includes('<item>')) {\n    const regex = /<item>[\\s\\S]*?<title>(?:<!\\[CDATA\\[)?([^<\\]]+)(?:\\]\\]>)?<\\/title>[\\s\\S]*?<link>([^<]+)<\\/link>[\\s\\S]*?<\\/item>/g;\n    let match;\n    while ((match = regex.exec(body)) !== null) {\n      items.push({\n        json: {\n          title: match[1].trim(),\n          url: match[2].trim(),\n          source: 'Google News',\n          raw: match[1].trim()\n        }\n      });\n    }\n  }\n\n  // Try Reddit JSON\n  if (input.json && input.json.data && input.json.data.children) {\n    for (const child of input.json.data.children) {\n      const post = child.data;\n      if (post && post.title) {\n        items.push({\n          json: {\n            title: post.title,\n            url: `https://reddit.com${post.permalink}`,\n            source: 'Reddit r/SaaS',\n            raw: (post.selftext || post.title).slice(0, 200)\n          }\n        });\n      }\n    }\n  }\n}\n\n// Filter and deduplicate\nconst keywords = ['saas', 'software', 'automation', 'ai', 'startup', 'niche', 'vertical', 'workflow', 'crm', 'api', 'platform', 'subscription', 'tool', 'app'];\nconst seen = new Set();\nconst filtered = [];\n\nfor (const item of items) {\n  const title = item.json.title.toLowerCase();\n  if (!title || seen.has(title)) continue;\n  if (!keywords.some(kw => title.includes(kw))) continue;\n  seen.add(title);\n  filtered.push(item);\n}\n\nreturn filtered.slice(0, 15);"
       },
-      "id": "parse-google-news",
-      "name": "Parse Google News",
+      "id": "parse-and-filter",
+      "name": "Парсинг и фильтр",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [720, 220]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Get first 10 HN story IDs and fetch details\nconst ids = $input.first().json;\nif (!Array.isArray(ids)) return [];\nconst top10 = ids.slice(0, 10);\nreturn top10.map(id => ({ json: { storyId: id } }));"
-      },
-      "id": "hn-extract-ids",
-      "name": "HN: Extract IDs",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [720, 440]
-    },
-    {
-      "parameters": {
-        "url": "=https://hacker-news.firebaseio.com/v0/item/{{ $json.storyId }}.json",
-        "options": { "timeout": 5000 }
-      },
-      "id": "hn-fetch-story",
-      "name": "HN: Fetch Story",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [960, 440]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Parse Reddit posts\nconst posts = [];\nconst data = $input.first().json;\nif (data && data.data && data.data.children) {\n  for (const child of data.data.children) {\n    const post = child.data;\n    if (post && post.title) {\n      posts.push({\n        json: {\n          title: post.title,\n          url: `https://reddit.com${post.permalink}`,\n          source: 'Reddit r/SaaS',\n          publishedAt: new Date(post.created_utc * 1000).toISOString(),\n          score: post.score,\n          raw: post.selftext || post.title\n        }\n      });\n    }\n  }\n}\nreturn posts.length > 0 ? posts : [{ json: { title: '', url: '', source: 'Reddit', publishedAt: new Date().toISOString() } }];"
-      },
-      "id": "parse-reddit",
-      "name": "Parse Reddit",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [720, 580]
-    },
-    {
-      "parameters": {
-        "mode": "multiplex",
-        "clashHandling": { "values": { "resolveClash": "addSuffix" } }
-      },
-      "id": "merge-sources",
-      "name": "Объединить источники",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3,
-      "position": [1200, 380]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Filter: remove empty, duplicates, and non-relevant items\nconst seen = new Set();\nconst keywords = ['saas', 'software', 'automation', 'ai tool', 'startup', 'niche', 'vertical', 'smb', 'small business', 'workflow', 'crm', 'erp', 'api', 'platform', 'subscription'];\nconst results = [];\n\nfor (const item of $input.all()) {\n  const title = (item.json.title || '').toLowerCase();\n  const url = item.json.url || '';\n  \n  if (!title || title === 'no items' || seen.has(title)) continue;\n  \n  const relevant = keywords.some(kw => title.includes(kw));\n  if (!relevant) continue;\n  \n  seen.add(title);\n  results.push({\n    json: {\n      title: item.json.title,\n      url: item.json.url || '',\n      source: item.json.source || 'Unknown',\n      publishedAt: item.json.publishedAt || new Date().toISOString(),\n      raw: item.json.raw || item.json.title\n    }\n  });\n}\n\nreturn results.slice(0, 20); // Max 20 ideas per run"
-      },
-      "id": "filter-dedupe",
-      "name": "Фильтр и дедупликация",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1440, 380]
+      "position": [720, 300]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "https://api.anthropic.com/v1/messages",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "anthropicApi",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
+            { "name": "x-api-key", "value": "PASTE_YOUR_API_KEY_HERE" },
             { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" }
+            { "name": "content-type", "value": "application/json" }
           ]
         },
         "sendBody": true,
         "contentType": "json",
         "body": {
           "model": "claude-haiku-4-5-20251001",
-          "max_tokens": 500,
+          "max_tokens": 400,
           "messages": [
             {
               "role": "user",
-              "content": "=You are a SaaS business evaluator. Score this idea on 8 criteria (0-10 each).\n\nIdea: {{ $json.title }}\nSource: {{ $json.source }}\n\nCriteria:\n1. market - market size (10=huge)\n2. automation - how automatable with AI (10=fully automated)\n3. pain - pain intensity (10=critical)\n4. competition - competition level (10=no competition, 1=saturated)\n5. willingnessToPay - willingness to pay (10=high)\n6. margin - profit margin potential (10=90%+)\n7. build - build complexity (10=very easy MVP)\n8. timing - market timing (10=perfect now)\n\nRespond ONLY with valid JSON:\n{\"market\":7,\"automation\":8,\"pain\":6,\"competition\":5,\"willingnessToPay\":7,\"margin\":8,\"build\":7,\"timing\":6,\"summary\":\"One sentence about this idea\"}"
+              "content": "=Score this SaaS idea on 8 criteria (0-10 each). Idea: {{ $json.title }}\n\nCriteria: market size, automation potential, pain intensity, competition (10=none), willingness to pay, profit margin, build complexity (10=very easy), market timing.\n\nReply ONLY with JSON, no other text:\n{\"market\":7,\"automation\":8,\"pain\":6,\"competition\":5,\"willingnessToPay\":7,\"margin\":8,\"build\":7,\"timing\":6,\"summary\":\"One sentence about this idea in Russian\"}"
             }
           ]
         },
         "options": { "timeout": 30000 }
       },
       "id": "claude-score",
-      "name": "Claude: Скоринг идеи",
+      "name": "Claude: Скоринг",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1680, 380]
+      "position": [960, 300]
     },
     {
       "parameters": {
-        "jsCode": "// Parse Claude response and calculate composite score\nconst results = [];\n\nfor (const item of $input.all()) {\n  try {\n    const response = item.json;\n    let scoreData = null;\n    \n    // Extract JSON from Claude response\n    if (response.content && response.content[0] && response.content[0].text) {\n      const text = response.content[0].text;\n      const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n      if (jsonMatch) {\n        scoreData = JSON.parse(jsonMatch[0]);\n      }\n    }\n    \n    if (!scoreData) continue;\n    \n    // Weighted composite score\n    const weights = {\n      market: 0.15,\n      automation: 0.20,\n      pain: 0.15,\n      competition: 0.10,\n      willingnessToPay: 0.10,\n      margin: 0.10,\n      build: 0.10,\n      timing: 0.10\n    };\n    \n    let composite = 0;\n    for (const [key, weight] of Object.entries(weights)) {\n      composite += (scoreData[key] || 0) * weight;\n    }\n    composite = Math.round(composite * 10) / 10;\n    \n    // Verdict\n    let verdict = 'KILL';\n    if (composite >= 8.0) verdict = 'BUILD';\n    else if (composite >= 6.5) verdict = 'BET';\n    else if (composite >= 4.5) verdict = 'FLIP';\n    \n    results.push({\n      json: {\n        title: $('Фильтр и дедупликация').item.json.title,\n        source: $('Фильтр и дедупликация').item.json.source,\n        sourceUrl: $('Фильтр и дедупликация').item.json.url,\n        scoreComposite: composite,\n        verdict,\n        verdictReason: scoreData.summary || '',\n        scores: {\n          market: scoreData.market,\n          automation: scoreData.automation,\n          pain: scoreData.pain,\n          competition: scoreData.competition,\n          willingnessToPay: scoreData.willingnessToPay,\n          margin: scoreData.margin,\n          build: scoreData.build,\n          timing: scoreData.timing\n        },\n        discoveredAt: new Date().toISOString()\n      }\n    });\n  } catch (e) {\n    // Skip failed items\n  }\n}\n\nreturn results;"
+        "jsCode": "// Calculate composite score and build idea object\nconst results = [];\n\nfor (const item of $input.all()) {\n  try {\n    let scoreData = null;\n    const response = item.json;\n\n    if (response.content && response.content[0] && response.content[0].text) {\n      const text = response.content[0].text.trim();\n      const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n      if (jsonMatch) scoreData = JSON.parse(jsonMatch[0]);\n    }\n\n    if (!scoreData) continue;\n\n    const weights = { market:0.15, automation:0.20, pain:0.15, competition:0.10, willingnessToPay:0.10, margin:0.10, build:0.10, timing:0.10 };\n    let composite = 0;\n    for (const [k, w] of Object.entries(weights)) composite += (scoreData[k] || 0) * w;\n    composite = Math.round(composite * 10) / 10;\n\n    let verdict = 'KILL';\n    if (composite >= 8.0) verdict = 'BUILD';\n    else if (composite >= 6.5) verdict = 'BET';\n    else if (composite >= 4.5) verdict = 'FLIP';\n\n    // Get source idea from previous node\n    const sourceIdea = $('Парсинг и фильтр').item.json;\n\n    results.push({\n      json: {\n        id: Date.now() + Math.floor(Math.random() * 1000),\n        title: sourceIdea.title,\n        description: scoreData.summary || '',\n        source: sourceIdea.source,\n        sourceUrl: sourceIdea.url,\n        scoreComposite: composite,\n        verdict,\n        verdictReason: scoreData.summary || '',\n        status: 'new',\n        discoveredAt: new Date().toISOString(),\n        scores: {\n          market: scoreData.market,\n          automation: scoreData.automation,\n          pain: scoreData.pain,\n          competition: scoreData.competition,\n          willingnessToPay: scoreData.willingnessToPay,\n          margin: scoreData.margin,\n          build: scoreData.build,\n          timing: scoreData.timing\n        }\n      }\n    });\n  } catch(e) {\n    // skip failed\n  }\n}\n\nreturn results;"
       },
-      "id": "calc-composite",
-      "name": "Рассчитать итоговый балл",
+      "id": "calc-score",
+      "name": "Рассчитать балл",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1920, 380]
+      "position": [1200, 300]
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "=INSERT OR IGNORE INTO ideas (title, source, source_url, score_composite, verdict, verdict_reason, score_market, score_automation, score_pain, score_competition, score_willingness_to_pay, score_margin, score_build, score_timing, discovered_at)\nVALUES (\n  '{{ $json.title.replace(/'/g, \"''\") }}',\n  '{{ $json.source }}',\n  '{{ $json.sourceUrl }}',\n  {{ $json.scoreComposite }},\n  '{{ $json.verdict }}',\n  '{{ $json.verdictReason.replace(/'/g, \"''\") }}',\n  {{ $json.scores.market }},\n  {{ $json.scores.automation }},\n  {{ $json.scores.pain }},\n  {{ $json.scores.competition }},\n  {{ $json.scores.willingnessToPay }},\n  {{ $json.scores.margin }},\n  {{ $json.scores.build }},\n  {{ $json.scores.timing }},\n  '{{ $json.discoveredAt }}'\n);",
-        "additionalFields": {}
+        "jsCode": "// Collect all scored ideas and save to JSON file\nconst fs = require('fs');\nconst path = require('path');\n\nconst filePath = 'C:/AI Cloude/Projects/autonomy/data/ideas.json';\nconst dir = path.dirname(filePath);\n\n// Create directory if needed\nif (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n\n// Load existing ideas\nlet existing = [];\ntry {\n  const raw = fs.readFileSync(filePath, 'utf8');\n  existing = JSON.parse(raw);\n} catch(e) {\n  existing = [];\n}\n\n// Add new ideas (skip duplicates by title)\nconst existingTitles = new Set(existing.map(i => i.title.toLowerCase()));\nconst newIdeas = [];\n\nfor (const item of $input.all()) {\n  const idea = item.json;\n  if (!existingTitles.has(idea.title.toLowerCase())) {\n    existing.push(idea);\n    newIdeas.push(idea);\n  }\n}\n\n// Auto-delete KILL/FLIP older than 10 days\nconst tenDaysAgo = new Date();\ntenDaysAgo.setDate(tenDaysAgo.getDate() - 10);\nexisting = existing.filter(idea => {\n  if (idea.verdict === 'KILL' || idea.verdict === 'FLIP') {\n    return new Date(idea.discoveredAt) > tenDaysAgo;\n  }\n  return true;\n});\n\n// Save\nfs.writeFileSync(filePath, JSON.stringify(existing, null, 2), 'utf8');\n\nreturn [{\n  json: {\n    status: 'success',\n    newIdeas: newIdeas.length,\n    totalIdeas: existing.length,\n    timestamp: new Date().toISOString()\n  }\n}];"
       },
-      "id": "save-to-db",
-      "name": "Сохранить в БД",
-      "type": "n8n-nodes-base.sqlite",
-      "typeVersion": 1,
-      "position": [2160, 380],
-      "credentials": {
-        "sqlite": {
-          "id": "autonomy-sqlite",
-          "name": "Autonomy SQLite"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Auto-delete KILL/FLIP ideas older than 10 days\nconst tenDaysAgo = new Date();\ntenDaysAgo.setDate(tenDaysAgo.getDate() - 10);\nreturn [{\n  json: {\n    cutoffDate: tenDaysAgo.toISOString(),\n    message: `Cleaning ideas before ${tenDaysAgo.toISOString()}`\n  }\n}];"
-      },
-      "id": "prep-cleanup",
-      "name": "Подготовить очистку",
+      "id": "save-to-file",
+      "name": "Сохранить в файл",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2400, 300]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "=DELETE FROM ideas WHERE verdict IN ('KILL', 'FLIP') AND discovered_at < '{{ $json.cutoffDate }}';",
-        "additionalFields": {}
-      },
-      "id": "cleanup-old",
-      "name": "Удалить старые идеи",
-      "type": "n8n-nodes-base.sqlite",
-      "typeVersion": 1,
-      "position": [2640, 300],
-      "credentials": {
-        "sqlite": {
-          "id": "autonomy-sqlite",
-          "name": "Autonomy SQLite"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const allItems = $input.all();\nconst saved = allItems.length;\nreturn [{\n  json: {\n    status: 'success',\n    ideasSaved: saved,\n    timestamp: new Date().toISOString(),\n    message: `Discovery complete: ${saved} ideas saved`\n  }\n}];"
-      },
-      "id": "log-result",
-      "name": "Лог результата",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2880, 380]
+      "position": [1440, 300]
     }
   ],
   "connections": {
@@ -239,65 +123,32 @@
       "main": [[
         { "node": "Google News: SaaS", "type": "main", "index": 0 },
         { "node": "Google News: Vertical", "type": "main", "index": 0 },
-        { "node": "HackerNews Top", "type": "main", "index": 0 },
         { "node": "Reddit r/SaaS", "type": "main", "index": 0 }
       ]]
     },
     "Google News: SaaS": {
-      "main": [[{ "node": "Parse Google News", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]]
     },
     "Google News: Vertical": {
-      "main": [[{ "node": "Parse Google News", "type": "main", "index": 0 }]]
-    },
-    "HackerNews Top": {
-      "main": [[{ "node": "HN: Extract IDs", "type": "main", "index": 0 }]]
-    },
-    "HN: Extract IDs": {
-      "main": [[{ "node": "HN: Fetch Story", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]]
     },
     "Reddit r/SaaS": {
-      "main": [[{ "node": "Parse Reddit", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]]
     },
-    "Parse Google News": {
-      "main": [[{ "node": "Объединить источники", "type": "main", "index": 0 }]]
+    "Парсинг и фильтр": {
+      "main": [[{ "node": "Claude: Скоринг", "type": "main", "index": 0 }]]
     },
-    "HN: Fetch Story": {
-      "main": [[{ "node": "Объединить источники", "type": "main", "index": 1 }]]
+    "Claude: Скоринг": {
+      "main": [[{ "node": "Рассчитать балл", "type": "main", "index": 0 }]]
     },
-    "Parse Reddit": {
-      "main": [[{ "node": "Объединить источники", "type": "main", "index": 2 }]]
-    },
-    "Объединить источники": {
-      "main": [[{ "node": "Фильтр и дедупликация", "type": "main", "index": 0 }]]
-    },
-    "Фильтр и дедупликация": {
-      "main": [[{ "node": "Claude: Скоринг идеи", "type": "main", "index": 0 }]]
-    },
-    "Claude: Скоринг идеи": {
-      "main": [[{ "node": "Рассчитать итоговый балл", "type": "main", "index": 0 }]]
-    },
-    "Рассчитать итоговый балл": {
-      "main": [[
-        { "node": "Сохранить в БД", "type": "main", "index": 0 },
-        { "node": "Подготовить очистку", "type": "main", "index": 0 }
-      ]]
-    },
-    "Сохранить в БД": {
-      "main": [[{ "node": "Лог результата", "type": "main", "index": 0 }]]
-    },
-    "Подготовить очистку": {
-      "main": [[{ "node": "Удалить старые идеи", "type": "main", "index": 0 }]]
+    "Рассчитать балл": {
+      "main": [[{ "node": "Сохранить в файл", "type": "main", "index": 0 }]]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
     "executionOrder": "v1",
-    "saveManualExecutions": true,
-    "callerPolicy": "workflowsFromSameOwner"
+    "saveManualExecutions": true
   },
-  "tags": ["discovery", "autonomous"],
-  "meta": {
-    "templateCredsSetupCompleted": false,
-    "instanceId": "autonomy-local"
-  }
+  "tags": ["discovery", "autonomous"]
 }
