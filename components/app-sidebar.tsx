@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Bot,
   Lightbulb,
+  Rocket,
   Code2,
   BarChart3,
   DollarSign,
@@ -28,6 +29,7 @@ const navItems = [
   { title: "Обзор", href: "/", icon: LayoutDashboard },
   { title: "Агенты", href: "/agents", icon: Bot },
   { title: "Идеи", href: "/ideas", icon: Lightbulb },
+  { title: "Запуски", href: "/launches", icon: Rocket },
   { title: "Код", href: "/code", icon: Code2 },
   { title: "Метрики", href: "/metrics", icon: BarChart3 },
 ];
