@@ -44,9 +44,7 @@
         "url": "https://www.reddit.com/r/SaaS/new.json?limit=25",
         "options": {
           "timeout": 10000,
-          "headers": {
-            "User-Agent": "Mozilla/5.0 Autonomy-Bot/1.0"
-          }
+          "headers": { "User-Agent": "Mozilla/5.0 Autonomy-Bot/1.0" }
         }
       },
       "id": "reddit-saas",
@@ -57,13 +55,23 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parse all RSS/Reddit sources into unified format\nconst items = [];\n\nfor (const input of $input.all()) {\n  const body = input.json.data || input.json.body || '';\n  const nodeName = input.pairedItem ? '' : '';\n\n  // Try RSS XML parsing\n  if (typeof body === 'string' && body.includes('<item>')) {\n    const regex = /<item>[\\s\\S]*?<title>(?:<!\\[CDATA\\[)?([^<\\]]+)(?:\\]\\]>)?<\\/title>[\\s\\S]*?<link>([^<]+)<\\/link>[\\s\\S]*?<\\/item>/g;\n    let match;\n    while ((match = regex.exec(body)) !== null) {\n      items.push({\n        json: {\n          title: match[1].trim(),\n          url: match[2].trim(),\n          source: 'Google News',\n          raw: match[1].trim()\n        }\n      });\n    }\n  }\n\n  // Try Reddit JSON\n  if (input.json && input.json.data && input.json.data.children) {\n    for (const child of input.json.data.children) {\n      const post = child.data;\n      if (post && post.title) {\n        items.push({\n          json: {\n            title: post.title,\n            url: `https://reddit.com${post.permalink}`,\n            source: 'Reddit r/SaaS',\n            raw: (post.selftext || post.title).slice(0, 200)\n          }\n        });\n      }\n    }\n  }\n}\n\n// Filter and deduplicate\nconst keywords = ['saas', 'software', 'automation', 'ai', 'startup', 'niche', 'vertical', 'workflow', 'crm', 'api', 'platform', 'subscription', 'tool', 'app'];\nconst seen = new Set();\nconst filtered = [];\n\nfor (const item of items) {\n  const title = item.json.title.toLowerCase();\n  if (!title || seen.has(title)) continue;\n  if (!keywords.some(kw => title.includes(kw))) continue;\n  seen.add(title);\n  filtered.push(item);\n}\n\nreturn filtered.slice(0, 5);"
+        "jsCode": "const items = [];\n\nfor (const input of $input.all()) {\n  const body = input.json.data || input.json.body || '';\n\n  if (typeof body === 'string' && body.includes('<item>')) {\n    const regex = /<item>[\\s\\S]*?<title>(?:<!\\[CDATA\\[)?([^<\\]]+)(?:\\]\\]>)?<\\/title>[\\s\\S]*?<link>([^<]+)<\\/link>[\\s\\S]*?<\\/item>/g;\n    let match;\n    while ((match = regex.exec(body)) !== null) {\n      items.push({ json: { title: match[1].trim(), url: match[2].trim(), source: 'Google News' } });\n    }\n  }\n\n  if (input.json && input.json.data && input.json.data.children) {\n    for (const child of input.json.data.children) {\n      const post = child.data;\n      if (post && post.title) {\n        items.push({ json: { title: post.title, url: 'https://reddit.com' + post.permalink, source: 'Reddit r/SaaS' } });\n      }\n    }\n  }\n}\n\nconst keywords = ['saas', 'software', 'automation', 'ai', 'startup', 'niche', 'vertical', 'workflow', 'crm', 'api', 'platform', 'subscription', 'tool', 'app'];\nconst seen = new Set();\nconst filtered = [];\n\nfor (const item of items) {\n  const title = item.json.title.toLowerCase();\n  if (!title || seen.has(title)) continue;\n  if (!keywords.some(kw => title.includes(kw))) continue;\n  seen.add(title);\n  filtered.push(item);\n}\n\nreturn filtered.slice(0, 5);"
       },
       "id": "parse-and-filter",
       "name": "Парсинг и фильтр",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Anthropic request body as a safe JSON string\nconst title = $json.title || '';\nconst prompt = 'Score this SaaS idea on 8 criteria (0-10 each). Idea: ' + title + '\\n\\nCriteria: market size (market), automation potential (automation), pain intensity (pain), low competition = high score (competition), willingness to pay (willingnessToPay), profit margin (margin), build complexity - low = easy (build), market timing (timing).\\n\\nReply ONLY with this JSON structure, no markdown, no extra text:\\n{\"market\":7,\"automation\":8,\"pain\":6,\"competition\":5,\"willingnessToPay\":7,\"margin\":8,\"build\":7,\"timing\":6,\"summary\":\"One sentence about this idea in Russian\"}';\n\nconst body = {\n  model: 'claude-haiku-4-5-20251001',\n  max_tokens: 400,\n  messages: [{ role: 'user', content: prompt }]\n};\n\nreturn [{\n  json: {\n    title: $json.title,\n    url: $json.url,\n    source: $json.source,\n    requestBody: JSON.stringify(body)\n  }\n}];"
+      },
+      "id": "build-request",
+      "name": "Подготовить запрос",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
     },
     {
       "parameters": {
@@ -78,15 +86,12 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "=JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 400, messages: [{ role: 'user', content: 'Score this SaaS idea on 8 criteria (0-10 each). Idea: ' + $json.title + '\\n\\nCriteria: market size, automation potential, pain intensity, competition (10=none), willingness to pay, profit margin, build complexity (10=very easy), market timing.\\n\\nReply ONLY with JSON, no other text: {\"market\":7,\"automation\":8,\"pain\":6,\"competition\":5,\"willingnessToPay\":7,\"margin\":8,\"build\":7,\"timing\":6,\"summary\":\"One sentence in Russian\"}' }] })",
+        "specifyBody": "string",
+        "body": "={{ $json.requestBody }}",
         "options": {
           "timeout": 30000,
           "batching": {
-            "batch": {
-              "batchSize": 1,
-              "batchInterval": 2000
-            }
+            "batch": { "batchSize": 1, "batchInterval": 3000 }
           }
         }
       },
@@ -94,27 +99,27 @@
       "name": "Claude: Скоринг",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [960, 300]
+      "position": [1200, 300]
     },
     {
       "parameters": {
-        "jsCode": "// Calculate composite score and build idea object\nconst results = [];\n\nfor (const item of $input.all()) {\n  try {\n    let scoreData = null;\n    const response = item.json;\n\n    if (response.content && response.content[0] && response.content[0].text) {\n      const text = response.content[0].text.trim();\n      const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n      if (jsonMatch) scoreData = JSON.parse(jsonMatch[0]);\n    }\n\n    if (!scoreData) continue;\n\n    const weights = { market:0.15, automation:0.20, pain:0.15, competition:0.10, willingnessToPay:0.10, margin:0.10, build:0.10, timing:0.10 };\n    let composite = 0;\n    for (const [k, w] of Object.entries(weights)) composite += (scoreData[k] || 0) * w;\n    composite = Math.round(composite * 10) / 10;\n\n    let verdict = 'KILL';\n    if (composite >= 8.0) verdict = 'BUILD';\n    else if (composite >= 6.5) verdict = 'BET';\n    else if (composite >= 4.5) verdict = 'FLIP';\n\n    // Get source idea from previous node\n    const sourceIdea = $('Парсинг и фильтр').item.json;\n\n    results.push({\n      json: {\n        id: Date.now() + Math.floor(Math.random() * 1000),\n        title: sourceIdea.title,\n        description: scoreData.summary || '',\n        source: sourceIdea.source,\n        sourceUrl: sourceIdea.url,\n        scoreComposite: composite,\n        verdict,\n        verdictReason: scoreData.summary || '',\n        status: 'new',\n        discoveredAt: new Date().toISOString(),\n        scores: {\n          market: scoreData.market,\n          automation: scoreData.automation,\n          pain: scoreData.pain,\n          competition: scoreData.competition,\n          willingnessToPay: scoreData.willingnessToPay,\n          margin: scoreData.margin,\n          build: scoreData.build,\n          timing: scoreData.timing\n        }\n      }\n    });\n  } catch(e) {\n    // skip failed\n  }\n}\n\nreturn results;"
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  try {\n    const response = item.json;\n    let scoreData = null;\n\n    if (response.content && response.content[0] && response.content[0].text) {\n      const text = response.content[0].text.trim();\n      const jsonMatch = text.match(/\\{[\\s\\S]*?\\}/);\n      if (jsonMatch) scoreData = JSON.parse(jsonMatch[0]);\n    }\n\n    if (!scoreData) continue;\n\n    const weights = { market:0.15, automation:0.20, pain:0.15, competition:0.10, willingnessToPay:0.10, margin:0.10, build:0.10, timing:0.10 };\n    let composite = 0;\n    for (const [k, w] of Object.entries(weights)) composite += (scoreData[k] || 0) * w;\n    composite = Math.round(composite * 10) / 10;\n\n    let verdict = 'KILL';\n    if (composite >= 8.0) verdict = 'BUILD';\n    else if (composite >= 6.5) verdict = 'BET';\n    else if (composite >= 4.5) verdict = 'FLIP';\n\n    const sourceIdea = $('Подготовить запрос').item.json;\n\n    results.push({\n      json: {\n        id: Date.now() + Math.floor(Math.random() * 1000),\n        title: sourceIdea.title,\n        description: scoreData.summary || '',\n        source: sourceIdea.source,\n        sourceUrl: sourceIdea.url || '',\n        scoreComposite: composite,\n        verdict,\n        verdictReason: scoreData.summary || '',\n        status: 'new',\n        discoveredAt: new Date().toISOString(),\n        scores: {\n          market: scoreData.market || 0,\n          automation: scoreData.automation || 0,\n          pain: scoreData.pain || 0,\n          competition: scoreData.competition || 0,\n          willingnessToPay: scoreData.willingnessToPay || 0,\n          margin: scoreData.margin || 0,\n          build: scoreData.build || 0,\n          timing: scoreData.timing || 0\n        }\n      }\n    });\n  } catch(e) {}\n}\n\nreturn results;"
       },
       "id": "calc-score",
       "name": "Рассчитать балл",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, 300]
+      "position": [1440, 300]
     },
     {
       "parameters": {
-        "jsCode": "// Collect all scored ideas and save to JSON file\nconst fs = require('fs');\nconst path = require('path');\n\nconst filePath = 'C:/autonomy-data/ideas.json';\nconst dir = path.dirname(filePath);\n\n// Create directory if needed\nif (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n\n// Load existing ideas\nlet existing = [];\ntry {\n  const raw = fs.readFileSync(filePath, 'utf8');\n  existing = JSON.parse(raw);\n} catch(e) {\n  existing = [];\n}\n\n// Add new ideas (skip duplicates by title)\nconst existingTitles = new Set(existing.map(i => i.title.toLowerCase()));\nconst newIdeas = [];\n\nfor (const item of $input.all()) {\n  const idea = item.json;\n  if (!existingTitles.has(idea.title.toLowerCase())) {\n    existing.push(idea);\n    newIdeas.push(idea);\n  }\n}\n\n// Auto-delete KILL/FLIP older than 10 days\nconst tenDaysAgo = new Date();\ntenDaysAgo.setDate(tenDaysAgo.getDate() - 10);\nexisting = existing.filter(idea => {\n  if (idea.verdict === 'KILL' || idea.verdict === 'FLIP') {\n    return new Date(idea.discoveredAt) > tenDaysAgo;\n  }\n  return true;\n});\n\n// Save\nfs.writeFileSync(filePath, JSON.stringify(existing, null, 2), 'utf8');\n\nreturn [{\n  json: {\n    status: 'success',\n    newIdeas: newIdeas.length,\n    totalIdeas: existing.length,\n    timestamp: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const fs = require('fs');\nconst filePath = 'C:/autonomy-data/ideas.json';\n\nif (!fs.existsSync('C:/autonomy-data')) fs.mkdirSync('C:/autonomy-data', { recursive: true });\n\nlet existing = [];\ntry { existing = JSON.parse(fs.readFileSync(filePath, 'utf8')); } catch(e) {}\n\nconst existingTitles = new Set(existing.map(i => i.title.toLowerCase()));\nconst newIdeas = [];\n\nfor (const item of $input.all()) {\n  const idea = item.json;\n  if (!existingTitles.has(idea.title.toLowerCase())) {\n    existing.push(idea);\n    newIdeas.push(idea);\n  }\n}\n\nconst tenDaysAgo = new Date();\ntenDaysAgo.setDate(tenDaysAgo.getDate() - 10);\nexisting = existing.filter(idea => {\n  if (idea.verdict === 'KILL' || idea.verdict === 'FLIP') return new Date(idea.discoveredAt) > tenDaysAgo;\n  return true;\n});\n\nfs.writeFileSync(filePath, JSON.stringify(existing, null, 2), 'utf8');\n\nreturn [{ json: { status: 'success', newIdeas: newIdeas.length, totalIdeas: existing.length, timestamp: new Date().toISOString() } }];"
       },
       "id": "save-to-file",
       "name": "Сохранить в файл",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1440, 300]
+      "position": [1680, 300]
     }
   ],
   "connections": {
@@ -125,29 +130,15 @@
         { "node": "Reddit r/SaaS", "type": "main", "index": 0 }
       ]]
     },
-    "Google News: SaaS": {
-      "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]]
-    },
-    "Google News: Vertical": {
-      "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]]
-    },
-    "Reddit r/SaaS": {
-      "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]]
-    },
-    "Парсинг и фильтр": {
-      "main": [[{ "node": "Claude: Скоринг", "type": "main", "index": 0 }]]
-    },
-    "Claude: Скоринг": {
-      "main": [[{ "node": "Рассчитать балл", "type": "main", "index": 0 }]]
-    },
-    "Рассчитать балл": {
-      "main": [[{ "node": "Сохранить в файл", "type": "main", "index": 0 }]]
-    }
+    "Google News: SaaS": { "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]] },
+    "Google News: Vertical": { "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]] },
+    "Reddit r/SaaS": { "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]] },
+    "Парсинг и фильтр": { "main": [[{ "node": "Подготовить запрос", "type": "main", "index": 0 }]] },
+    "Подготовить запрос": { "main": [[{ "node": "Claude: Скоринг", "type": "main", "index": 0 }]] },
+    "Claude: Скоринг": { "main": [[{ "node": "Рассчитать балл", "type": "main", "index": 0 }]] },
+    "Рассчитать балл": { "main": [[{ "node": "Сохранить в файл", "type": "main", "index": 0 }]] }
   },
   "active": false,
-  "settings": {
-    "executionOrder": "v1",
-    "saveManualExecutions": true
-  },
+  "settings": { "executionOrder": "v1", "saveManualExecutions": true },
   "tags": ["discovery", "autonomous"]
 }
