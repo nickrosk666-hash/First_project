@@ -61,8 +61,7 @@ export default function IdeaDetailPage({
         </div>
         {canLaunch && (
           <LaunchButton
-            ideaId={idea.id}
-            ideaTitle={idea.title}
+            idea={idea}
             disabled={idea.status === "building"}
           />
         )}
@@ -233,8 +232,7 @@ export default function IdeaDetailPage({
                 </p>
               </div>
               <LaunchButton
-                ideaId={idea.id}
-                ideaTitle={idea.title}
+                idea={idea}
                 disabled={idea.status === "building"}
               />
             </div>
