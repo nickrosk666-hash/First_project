@@ -79,7 +79,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 400,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Score this SaaS idea on 8 criteria (0-10 each). Idea: {{ $json.title }}\\n\\nCriteria: market size, automation potential, pain intensity, competition (10=none), willingness to pay, profit margin, build complexity (10=very easy), market timing.\\n\\nReply ONLY with JSON, no other text: {\\\"market\\\":7,\\\"automation\\\":8,\\\"pain\\\":6,\\\"competition\\\":5,\\\"willingnessToPay\\\":7,\\\"margin\\\":8,\\\"build\\\":7,\\\"timing\\\":6,\\\"summary\\\":\\\"One sentence in Russian\\\"}\"\n    }\n  ]\n}",
+        "jsonBody": "=JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 400, messages: [{ role: 'user', content: 'Score this SaaS idea on 8 criteria (0-10 each). Idea: ' + $json.title + '\\n\\nCriteria: market size, automation potential, pain intensity, competition (10=none), willingness to pay, profit margin, build complexity (10=very easy), market timing.\\n\\nReply ONLY with JSON, no other text: {\"market\":7,\"automation\":8,\"pain\":6,\"competition\":5,\"willingnessToPay\":7,\"margin\":8,\"build\":7,\"timing\":6,\"summary\":\"One sentence in Russian\"}' }] })",
         "options": {
           "timeout": 30000,
           "batching": {
