@@ -34,6 +34,8 @@ interface LaunchResult {
   projectDir?: string;
   landingPageUrl?: string;
   domain?: string;
+  savedFiles?: string[];
+  filesCount?: number;
   error?: string;
 }
 
@@ -115,7 +117,8 @@ export function LaunchButton({
 
       addLog(`✅ Продукт: "${data.productName}"`);
       addLog(`✅ Слоган: ${data.tagline}`);
-      addLog(`✅ Лендинг: ${data.projectDir}`);
+      addLog(`✅ Файлов создано: ${data.filesCount || 0}`);
+      addLog(`✅ Папка: ${data.projectDir}`);
       if (data.domain) addLog(`✅ Домен: ${data.domain}`);
 
       setResult(data);
@@ -206,9 +209,17 @@ export function LaunchButton({
 
         {/* Product card */}
         {state === "launched" && result && (
-          <div className="rounded-md border border-green-500/20 bg-green-500/5 p-3 text-sm space-y-0.5">
+          <div className="rounded-md border border-green-500/20 bg-green-500/5 p-3 text-sm space-y-2">
             <p className="font-semibold text-green-400">{result.productName}</p>
             <p className="text-xs text-muted-foreground">{result.tagline}</p>
+            {result.projectDir && (
+              <div className="rounded bg-black/30 p-2 font-mono text-xs text-muted-foreground space-y-0.5">
+                <p className="text-green-400/80">▶ Запусти проект:</p>
+                <p>cd {result.projectDir.replace(/\//g, "\\")}</p>
+                <p>npm install</p>
+                <p>npm run dev</p>
+              </div>
+            )}
           </div>
         )}
 
