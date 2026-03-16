@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { MOCK_IDEAS } from '@/lib/mock-data';
+import fs from 'fs';
 
-const DB_PATH = process.env.N8N_DB_PATH || 'C:/AI Cloude/Projects/autonomy/data/n8n/autonomy-ideas.sqlite';
+const IDEAS_FILE = process.env.IDEAS_FILE_PATH || 'C:/AI Cloude/Projects/autonomy/data/ideas.json';
 
 export async function GET(
   _request: Request,
@@ -11,39 +12,10 @@ export async function GET(
   const numId = parseInt(id, 10);
 
   try {
-    const Database = (await import('better-sqlite3')).default;
-    const db = new Database(DB_PATH, { readonly: true });
-
-    const row = db.prepare(`
-      SELECT * FROM ideas WHERE id = ?
-    `).get(numId) as Record<string, unknown> | undefined;
-
-    db.close();
-
-    if (row) {
-      return NextResponse.json({
-        id: row.id,
-        title: row.title,
-        description: row.verdict_reason || '',
-        source: row.source,
-        sourceUrl: row.source_url || '',
-        scoreComposite: row.score_composite,
-        verdict: row.verdict,
-        verdictReason: row.verdict_reason || '',
-        status: row.status || 'new',
-        discoveredAt: row.discovered_at,
-        scores: {
-          market: row.score_market,
-          automation: row.score_automation,
-          pain: row.score_pain,
-          competition: row.score_competition,
-          willingnessToPay: row.score_willingness_to_pay,
-          margin: row.score_margin,
-          build: row.score_build,
-          timing: row.score_timing,
-        },
-      });
-    }
+    const raw = fs.readFileSync(IDEAS_FILE, 'utf8');
+    const ideas = JSON.parse(raw);
+    const idea = ideas.find((i: { id: number }) => i.id === numId);
+    if (idea) return NextResponse.json(idea);
   } catch {
     // fall through to mock
   }
