@@ -92,7 +92,7 @@ export function LaunchButton({
     addLog("Подключение к n8n workflow...");
 
     try {
-      const response = await fetch("http://localhost:5678/webhook/launch-idea", {
+      const response = await fetch("/api/launch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -105,7 +105,10 @@ export function LaunchButton({
         }),
       });
 
-      if (!response.ok) throw new Error(`n8n ответил ${response.status}`);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
 
       const data = await response.json();
       if (data.error) throw new Error(data.error);
