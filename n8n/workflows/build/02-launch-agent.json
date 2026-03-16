@@ -20,10 +20,10 @@
     },
     {
       "parameters": {
-        "jsCode": "// ВСТАВЬ СВОЙ API КЛЮЧ:\r\nconst ANTHROPIC_API_KEY = 'PASTE_YOUR_KEY_HERE';\r\n\r\nconst body = $input.first().json.body || $input.first().json;\r\nconst title = body.title || '';\r\nconst description = body.description || '';\r\n\r\nconst prompt = 'You are a senior full-stack developer. Create a COMPLETE working Next.js 14 SaaS project for this idea.\\n\\nIdea: ' + title + '\\nDescription: ' + description + '\\n\\nReturn ONLY a JSON object (no markdown, no explanation) with this exact structure:\\n{\\n  \"productName\": \"Short product name\",\\n  \"tagline\": \"One compelling line\",\\n  \"problem\": \"Problem in 2 sentences\",\\n  \"solution\": \"Solution in 2 sentences\",\\n  \"targetAudience\": \"Specific target audience\",\\n  \"domain\": \"suggested-domain.com\",\\n  \"pricing\": [{\"plan\": \"Starter\", \"price\": \"$29/mo\", \"features\": [\"Feature 1\", \"Feature 2\", \"Feature 3\"]}, {\"plan\": \"Pro\", \"price\": \"$79/mo\", \"features\": [\"Feature 1\", \"Feature 2\", \"Feature 3\", \"Feature 4\"]}],\\n  \"files\": [\\n    {\"path\": \"package.json\", \"content\": \"complete package.json with next, react, tailwindcss, typescript deps\"},\\n    {\"path\": \"next.config.ts\", \"content\": \"complete next.config.ts\"},\\n    {\"path\": \"tailwind.config.ts\", \"content\": \"complete tailwind config with dark theme\"},\\n    {\"path\": \"app/globals.css\", \"content\": \"globals with tailwind directives and dark variables\"},\\n    {\"path\": \"app/layout.tsx\", \"content\": \"root layout with metadata and dark theme\"},\\n    {\"path\": \"app/page.tsx\", \"content\": \"FULL beautiful dark landing page (#0a0a0a bg, white text) with: hero section with big headline + CTA button, problem section, features grid (6 features), pricing cards (2 tiers), footer. Use Tailwind only, no external libs.\"},\\n    {\"path\": \"app/dashboard/page.tsx\", \"content\": \"Dashboard page with sidebar, stats cards, recent activity table. Mock data inline.\"},\\n    {\"path\": \"app/dashboard/layout.tsx\", \"content\": \"Dashboard layout with sidebar navigation\"},\\n    {\"path\": \"README.md\", \"content\": \"# ProductName\\\\n\\\\nTagline\\\\n\\\\n## Quick Start\\\\n\\\\n```bash\\\\nnpm install\\\\nnpm run dev\\\\n```\\\\n\\\\nOpen http://localhost:3000\\\\n\\\\n## Features\\\\n\\\\n- Feature list\\\\n\\\\n## Tech Stack\\\\n\\\\n- Next.js 14 App Router\\\\n- TypeScript\\\\n- Tailwind CSS\\\\n- Stripe (add later)\\\\n\"}\\n  ]\\n}\\n\\nIMPORTANT: Every file must have COMPLETE, RUNNABLE code. No TODOs, no placeholders, no \"// add your code here\". The app must work with just npm install && npm run dev.';\r\n\r\nconst bodyStr = JSON.stringify({\r\n  model: 'claude-haiku-4-5-20251001',\r\n  max_tokens: 8000,\r\n  messages: [{ role: 'user', content: prompt }]\r\n});\r\n\r\nconst result = await new Promise((resolve, reject) => {\r\n  const https = require('https');\r\n  const req = https.request({\r\n    hostname: 'api.anthropic.com',\r\n    path: '/v1/messages',\r\n    method: 'POST',\r\n    headers: {\r\n      'x-api-key': ANTHROPIC_API_KEY,\r\n      'anthropic-version': '2023-06-01',\r\n      'content-type': 'application/json',\r\n      'content-length': Buffer.byteLength(bodyStr)\r\n    }\r\n  }, res => {\r\n    let d = '';\r\n    res.on('data', c => d += c);\r\n    res.on('end', () => resolve({ status: res.statusCode, body: d }));\r\n  });\r\n  req.on('error', reject);\r\n  req.write(bodyStr);\r\n  req.end();\r\n});\r\n\r\nif (result.status !== 200) throw new Error('Anthropic error ' + result.status + ': ' + result.body);\r\n\r\nconst data = JSON.parse(result.body);\r\nlet product = null;\r\n\r\nif (data.content && data.content[0] && data.content[0].text) {\r\n  const text = data.content[0].text.trim();\r\n  const match = text.match(/\\{[\\s\\S]*\\}/);\r\n  if (match) {\r\n    try { product = JSON.parse(match[0]); } catch(e) {\r\n      throw new Error('JSON parse failed: ' + e.message + '\\n\\nRaw: ' + text.slice(0, 500));\r\n    }\r\n  }\r\n}\r\n\r\nif (!product) throw new Error('Could not parse product from Claude response');\r\n\r\nreturn [{\r\n  json: {\r\n    ...product,\r\n    ideaId: body.ideaId,\r\n    ideaTitle: title,\r\n    generatedAt: new Date().toISOString()\r\n  }\r\n}];\r\n"
+        "jsCode": "const ANTHROPIC_API_KEY = 'PASTE_YOUR_KEY_HERE';\r\n\r\nasync function claude(prompt, maxTokens) {\r\n  const bodyStr = JSON.stringify({\r\n    model: 'claude-haiku-4-5-20251001',\r\n    max_tokens: maxTokens,\r\n    messages: [{ role: 'user', content: prompt }]\r\n  });\r\n  const result = await new Promise((resolve, reject) => {\r\n    const req = require('https').request({\r\n      hostname: 'api.anthropic.com', path: '/v1/messages', method: 'POST',\r\n      headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'content-length': Buffer.byteLength(bodyStr) }\r\n    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve({ status: res.statusCode, body: d })); });\r\n    req.on('error', reject); req.write(bodyStr); req.end();\r\n  });\r\n  if (result.status !== 200) throw new Error('Claude ' + result.status + ': ' + result.body);\r\n  return JSON.parse(result.body).content[0].text.trim();\r\n}\r\n\r\nconst body = $input.first().json.body || $input.first().json;\r\nconst title = body.title || '';\r\nconst description = body.description || '';\r\n\r\nconst text = await claude(\r\n  'Create a product brief for this SaaS idea. Return ONLY valid JSON, no markdown.\\n\\nIdea: ' + title + '\\nDescription: ' + description + '\\n\\n{\\n  \"productName\": \"Short name\",\\n  \"tagline\": \"One line pitch\",\\n  \"problem\": \"2 sentence problem\",\\n  \"solution\": \"2 sentence solution\",\\n  \"targetAudience\": \"specific audience\",\\n  \"domain\": \"suggested-domain.com\",\\n  \"pricing\": [{\"plan\":\"Starter\",\"price\":\"$29/mo\",\"features\":[\"f1\",\"f2\",\"f3\"]},{\"plan\":\"Pro\",\"price\":\"$79/mo\",\"features\":[\"f1\",\"f2\",\"f3\",\"f4\"]}],\\n  \"features\": [\"feature 1\",\"feature 2\",\"feature 3\",\"feature 4\",\"feature 5\",\"feature 6\"],\\n  \"techStack\": [\"Next.js 14\",\"TypeScript\",\"Tailwind CSS\",\"Supabase\",\"Stripe\"],\\n  \"dbTables\": [\"users\",\"subscriptions\",\"main_entity\"],\\n  \"mainEntity\": \"the core data model name (e.g. appointments, tasks, invoices)\",\\n  \"coreRoutes\": [\"/\",\"/dashboard\",\"/dashboard/[main]\",\"/api/[main]\"]\\n}',\r\n  1200\r\n);\r\n\r\nconst match = text.match(/\\{[\\s\\S]*\\}/);\r\nif (!match) throw new Error('No JSON in brief response: ' + text.slice(0, 300));\r\nconst brief = JSON.parse(match[0]);\r\n\r\nreturn [{ json: { ...brief, ideaId: body.ideaId, ideaTitle: title, generatedAt: new Date().toISOString() } }];\r\n"
       },
-      "id": "claude-generate",
-      "name": "Claude: Генерировать продукт (https)",
+      "id": "gen-brief",
+      "name": "1. Бриф и архитектура",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -33,14 +33,53 @@
     },
     {
       "parameters": {
-        "jsCode": "const fs = require('fs');\r\nconst path = require('path');\r\nconst product = $input.first().json;\r\n\r\nif (product.error) return [{ json: product }];\r\n\r\nconst slug = (product.productName || 'product').toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');\r\nconst projectDir = 'C:/autonomy-launches/' + slug;\r\n\r\n// Create project directory\r\nif (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });\r\n\r\n// Save all generated code files\r\nconst savedFiles = [];\r\nif (product.files && Array.isArray(product.files)) {\r\n  for (const file of product.files) {\r\n    const filePath = path.join(projectDir, file.path);\r\n    const fileDir = path.dirname(filePath);\r\n    if (!fs.existsSync(fileDir)) fs.mkdirSync(fileDir, { recursive: true });\r\n    fs.writeFileSync(filePath, file.content, 'utf8');\r\n    savedFiles.push(file.path);\r\n  }\r\n}\r\n\r\n// Also save landing page as index.html (for quick preview)\r\nif (product.landingPageHtml) {\r\n  fs.writeFileSync(path.join(projectDir, 'index.html'), product.landingPageHtml, 'utf8');\r\n  savedFiles.push('index.html');\r\n} else {\r\n  // Extract landing from files if app/page.tsx exists\r\n  const pageTsx = product.files && product.files.find(f => f.path === 'app/page.tsx');\r\n  if (pageTsx) {\r\n    // Save a quick-open HTML hint\r\n    const hint = '<!DOCTYPE html><html><body style=\"font-family:sans-serif;padding:2rem;background:#0a0a0a;color:white\"><h1>' + product.productName + '</h1><p>' + product.tagline + '</p><hr><p>Чтобы запустить проект:<br><code style=\"background:#1a1a1a;padding:0.5rem 1rem;border-radius:4px;display:block;margin:1rem 0\">cd ' + projectDir.replace(/\\//g, '\\\\') + '<br>npm install<br>npm run dev</code></p><p>Затем открой <a href=\"http://localhost:3000\" style=\"color:#60a5fa\">http://localhost:3000</a></p></body></html>';\r\n    fs.writeFileSync(path.join(projectDir, 'index.html'), hint, 'utf8');\r\n  }\r\n}\r\n\r\n// Save brief\r\nconst brief = { ...product };\r\ndelete brief.files;\r\ndelete brief.landingPageHtml;\r\nfs.writeFileSync(path.join(projectDir, 'brief.json'), JSON.stringify(brief, null, 2), 'utf8');\r\n\r\n// Update registry\r\nif (!fs.existsSync('C:/autonomy-data')) fs.mkdirSync('C:/autonomy-data', { recursive: true });\r\nconst registryPath = 'C:/autonomy-data/launches.json';\r\nlet launches = [];\r\ntry { launches = JSON.parse(fs.readFileSync(registryPath, 'utf8')); } catch(e) {}\r\n\r\nlaunches.push({\r\n  id: Date.now(),\r\n  ideaId: product.ideaId,\r\n  ideaTitle: product.ideaTitle,\r\n  productName: product.productName,\r\n  tagline: product.tagline,\r\n  slug,\r\n  domain: product.domain,\r\n  status: 'generated',\r\n  projectDir,\r\n  savedFiles,\r\n  generatedAt: product.generatedAt\r\n});\r\nfs.writeFileSync(registryPath, JSON.stringify(launches, null, 2), 'utf8');\r\n\r\nreturn [{\r\n  json: {\r\n    success: true,\r\n    productName: product.productName,\r\n    tagline: product.tagline,\r\n    slug,\r\n    projectDir,\r\n    domain: product.domain,\r\n    savedFiles,\r\n    filesCount: savedFiles.length,\r\n    generatedAt: product.generatedAt\r\n  }\r\n}];\r\n"
+        "jsCode": "const ANTHROPIC_API_KEY = 'PASTE_YOUR_KEY_HERE';\r\n\r\nasync function claude(prompt, maxTokens) {\r\n  const bodyStr = JSON.stringify({\r\n    model: 'claude-haiku-4-5-20251001',\r\n    max_tokens: maxTokens,\r\n    messages: [{ role: 'user', content: prompt }]\r\n  });\r\n  const result = await new Promise((resolve, reject) => {\r\n    const req = require('https').request({\r\n      hostname: 'api.anthropic.com', path: '/v1/messages', method: 'POST',\r\n      headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'content-length': Buffer.byteLength(bodyStr) }\r\n    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve({ status: res.statusCode, body: d })); });\r\n    req.on('error', reject); req.write(bodyStr); req.end();\r\n  });\r\n  if (result.status !== 200) throw new Error('Claude ' + result.status + ': ' + result.body);\r\n  return JSON.parse(result.body).content[0].text.trim();\r\n}\r\n\r\nconst d = $input.first().json;\r\n\r\nconst landing = await claude(\r\n  'Write a complete app/page.tsx landing page for ' + d.productName + '.\\n\\nTagline: ' + d.tagline + '\\nProblem: ' + d.problem + '\\nSolution: ' + d.solution + '\\nFeatures: ' + (d.features || []).join(', ') + '\\nPricing: ' + JSON.stringify(d.pricing) + '\\nAudience: ' + d.targetAudience + '\\n\\nRequirements:\\n- TypeScript React component, export default\\n- Tailwind CSS only, zero external UI libs\\n- Dark theme: bg-[#0a0a0a] text-white\\n- Sections: Navbar (logo + Sign In), Hero (big headline + 2 CTA buttons), Problem (3 pain points), Features (6 cards grid), Pricing (2 plan cards with features list), CTA banner, Footer\\n- Navbar \"Sign In\" links to /dashboard\\n- Hero primary CTA links to /dashboard\\n- Fully working, no TODOs\\n\\nOutput ONLY the TypeScript code, no explanation, no markdown fences.',\r\n  4000\r\n);\r\n\r\nconst layout = await claude(\r\n  'Write app/layout.tsx for ' + d.productName + ' Next.js 14 app.\\nInclude: metadata (title, description), html lang=\"en\", body with className=\"bg-[#0a0a0a] text-white antialiased\".\\nImport Inter font from next/font/google.\\nOutput ONLY the TypeScript code.',\r\n  600\r\n);\r\n\r\nconst globals = `@tailwind base;\\n@tailwind components;\\n@tailwind utilities;\\n\\n:root {\\n  --background: #0a0a0a;\\n  --foreground: #ffffff;\\n}\\n\\nbody {\\n  background: var(--background);\\n  color: var(--foreground);\\n}\\n\\n* {\\n  box-sizing: border-box;\\n}\\n`;\r\n\r\nconst nextConfig = `import type { NextConfig } from 'next';\\n\\nconst nextConfig: NextConfig = {};\\n\\nexport default nextConfig;\\n`;\r\n\r\nconst tailwindConfig = `import type { Config } from 'tailwindcss';\\n\\nconst config: Config = {\\n  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],\\n  theme: {\\n    extend: {\\n      colors: {\\n        background: '#0a0a0a',\\n      },\\n    },\\n  },\\n  plugins: [],\\n};\\n\\nexport default config;\\n`;\r\n\r\nconst packageJson = JSON.stringify({\r\n  name: d.productName.toLowerCase().replace(/[^a-z0-9]/g, '-'),\r\n  version: '0.1.0',\r\n  private: true,\r\n  scripts: { dev: 'next dev', build: 'next build', start: 'next start' },\r\n  dependencies: {\r\n    next: '^14.2.0',\r\n    react: '^18.3.0',\r\n    'react-dom': '^18.3.0'\r\n  },\r\n  devDependencies: {\r\n    typescript: '^5',\r\n    '@types/node': '^20',\r\n    '@types/react': '^18',\r\n    '@types/react-dom': '^18',\r\n    tailwindcss: '^3.4.0',\r\n    autoprefixer: '^10.4.0',\r\n    postcss: '^8.4.0'\r\n  }\r\n}, null, 2);\r\n\r\nconst tsConfig = JSON.stringify({\r\n  compilerOptions: {\r\n    target: 'ES2017', lib: ['dom', 'dom.iterable', 'esnext'],\r\n    allowJs: true, skipLibCheck: true, strict: true,\r\n    noEmit: true, esModuleInterop: true, module: 'esnext',\r\n    moduleResolution: 'bundler', resolveJsonModule: true,\r\n    isolatedModules: true, jsx: 'preserve', incremental: true,\r\n    plugins: [{ name: 'next' }],\r\n    paths: { '@/*': ['./*'] }\r\n  },\r\n  include: ['next-env.d.ts', '**/*.ts', '**/*.tsx', '.next/types/**/*.ts'],\r\n  exclude: ['node_modules']\r\n}, null, 2);\r\n\r\nconst postcssConfig = `module.exports = {\\n  plugins: {\\n    tailwindcss: {},\\n    autoprefixer: {},\\n  },\\n};\\n`;\r\n\r\nreturn [{\r\n  json: {\r\n    ...d,\r\n    landingCode: landing,\r\n    layoutCode: layout,\r\n    globalsCode: globals,\r\n    nextConfigCode: nextConfig,\r\n    tailwindConfigCode: tailwindConfig,\r\n    packageJsonCode: packageJson,\r\n    tsConfigCode: tsConfig,\r\n    postcssConfigCode: postcssConfig\r\n  }\r\n}];\r\n"
       },
-      "id": "save-launch",
-      "name": "Сохранить проект",
+      "id": "gen-landing",
+      "name": "2. Лендинг + конфиги",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ANTHROPIC_API_KEY = 'PASTE_YOUR_KEY_HERE';\r\n\r\nasync function claude(prompt, maxTokens) {\r\n  const bodyStr = JSON.stringify({\r\n    model: 'claude-haiku-4-5-20251001',\r\n    max_tokens: maxTokens,\r\n    messages: [{ role: 'user', content: prompt }]\r\n  });\r\n  const result = await new Promise((resolve, reject) => {\r\n    const req = require('https').request({\r\n      hostname: 'api.anthropic.com', path: '/v1/messages', method: 'POST',\r\n      headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'content-length': Buffer.byteLength(bodyStr) }\r\n    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve({ status: res.statusCode, body: d })); });\r\n    req.on('error', reject); req.write(bodyStr); req.end();\r\n  });\r\n  if (result.status !== 200) throw new Error('Claude ' + result.status + ': ' + result.body);\r\n  return JSON.parse(result.body).content[0].text.trim();\r\n}\r\n\r\nconst d = $input.first().json;\r\nconst entity = d.mainEntity || 'items';\r\n\r\nconst dashLayout = await claude(\r\n  'Write app/dashboard/layout.tsx for ' + d.productName + '.\\nInclude a sidebar with navigation links: Dashboard (/dashboard), ' + entity.charAt(0).toUpperCase() + entity.slice(1) + ' (/dashboard/' + entity + '), Settings (/dashboard/settings).\\nAdd a top header with product name and \"Sign Out\" button.\\nDark theme: bg-[#0f0f0f], sidebar bg-[#111111], text-white.\\nOutput ONLY TypeScript code.',\r\n  2000\r\n);\r\n\r\nconst dashPage = await claude(\r\n  'Write app/dashboard/page.tsx overview for ' + d.productName + '.\\nFeatures: ' + (d.features || []).join(', ') + '\\nShow: 4 stat cards with relevant metrics (use hardcoded numbers), a welcome message, quick actions.\\nDark theme, Tailwind only. All mock data inline.\\nOutput ONLY TypeScript code.',\r\n  2500\r\n);\r\n\r\nconst settingsPage = await claude(\r\n  'Write app/dashboard/settings/page.tsx for ' + d.productName + '.\\nInclude: Profile form (name, email), Subscription section showing current plan with upgrade button, API key section, Danger zone (delete account).\\nDark theme, Tailwind. No external libs.\\nOutput ONLY TypeScript code.',\r\n  2000\r\n);\r\n\r\nreturn [{\r\n  json: {\r\n    ...d,\r\n    dashLayoutCode: dashLayout,\r\n    dashPageCode: dashPage,\r\n    settingsPageCode: settingsPage\r\n  }\r\n}];\r\n"
+      },
+      "id": "gen-dashboard",
+      "name": "3. Дашборд + настройки",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ANTHROPIC_API_KEY = 'PASTE_YOUR_KEY_HERE';\r\n\r\nasync function claude(prompt, maxTokens) {\r\n  const bodyStr = JSON.stringify({\r\n    model: 'claude-haiku-4-5-20251001',\r\n    max_tokens: maxTokens,\r\n    messages: [{ role: 'user', content: prompt }]\r\n  });\r\n  const result = await new Promise((resolve, reject) => {\r\n    const req = require('https').request({\r\n      hostname: 'api.anthropic.com', path: '/v1/messages', method: 'POST',\r\n      headers: { 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'content-length': Buffer.byteLength(bodyStr) }\r\n    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve({ status: res.statusCode, body: d })); });\r\n    req.on('error', reject); req.write(bodyStr); req.end();\r\n  });\r\n  if (result.status !== 200) throw new Error('Claude ' + result.status + ': ' + result.body);\r\n  return JSON.parse(result.body).content[0].text.trim();\r\n}\r\n\r\nconst d = $input.first().json;\r\nconst entity = d.mainEntity || 'items';\r\nconst entityCap = entity.charAt(0).toUpperCase() + entity.slice(1);\r\n\r\nconst corePage = await claude(\r\n  'Write app/dashboard/' + entity + '/page.tsx — the CORE feature page for ' + d.productName + '.\\n\\nProduct: ' + d.productName + '\\nSolution: ' + d.solution + '\\nMain entity: ' + entity + '\\n\\nThis page is the PRIMARY thing users do in the app. Include:\\n1. Page header with title and \"Add New\" button\\n2. Filter/search bar\\n3. Table or card grid showing 5 sample ' + entity + ' rows with realistic data\\n4. Action buttons per row (Edit, Delete)\\n5. Modal or inline form for creating/editing (use useState, show/hide)\\n6. All mock data hardcoded inline\\n7. Dark theme, Tailwind only\\n\\nOutput ONLY TypeScript code, no explanation.',\r\n  3500\r\n);\r\n\r\nconst apiRoute = await claude(\r\n  'Write app/api/' + entity + '/route.ts for ' + d.productName + '.\\nHandlers:\\n- GET: return array of 5 mock ' + entity + ' objects with realistic fields\\n- POST: accept body, return created item with generated id\\nUse NextResponse. TypeScript.\\nOutput ONLY the code.',\r\n  1000\r\n);\r\n\r\nconst apiItemRoute = await claude(\r\n  'Write app/api/' + entity + '/[id]/route.ts for ' + d.productName + '.\\nHandlers: GET (return single mock item), PUT (return updated item), DELETE (return success).\\nUse NextResponse, NextRequest. TypeScript.\\nOutput ONLY the code.',\r\n  800\r\n);\r\n\r\nconst schema = '-- ' + d.productName + ' Database Schema (Supabase/PostgreSQL)\\n\\n' +\r\n  '-- Users (handled by Supabase Auth)\\n\\n' +\r\n  'CREATE TABLE subscriptions (\\n' +\r\n  '  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\\n' +\r\n  '  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,\\n' +\r\n  '  plan VARCHAR(50) DEFAULT \\'starter\\',\\n' +\r\n  '  status VARCHAR(50) DEFAULT \\'active\\',\\n' +\r\n  '  stripe_customer_id VARCHAR(255),\\n' +\r\n  '  stripe_subscription_id VARCHAR(255),\\n' +\r\n  '  current_period_end TIMESTAMPTZ,\\n' +\r\n  '  created_at TIMESTAMPTZ DEFAULT NOW()\\n' +\r\n  ');\\n\\n' +\r\n  'CREATE TABLE ' + entity + ' (\\n' +\r\n  '  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\\n' +\r\n  '  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,\\n' +\r\n  '  name VARCHAR(255) NOT NULL,\\n' +\r\n  '  status VARCHAR(50) DEFAULT \\'active\\',\\n' +\r\n  '  data JSONB DEFAULT \\'{}\\',\\n' +\r\n  '  created_at TIMESTAMPTZ DEFAULT NOW(),\\n' +\r\n  '  updated_at TIMESTAMPTZ DEFAULT NOW()\\n' +\r\n  ');\\n\\n' +\r\n  '-- Row Level Security\\n' +\r\n  'ALTER TABLE ' + entity + ' ENABLE ROW LEVEL SECURITY;\\n' +\r\n  'CREATE POLICY \"Users can only see their own ' + entity + '\"\\n' +\r\n  '  ON ' + entity + ' FOR ALL USING (auth.uid() = user_id);\\n';\r\n\r\nconst envExample = '# ' + d.productName + ' — Environment Variables\\n\\n' +\r\n  '# App\\nNEXT_PUBLIC_APP_NAME=' + d.productName + '\\nNEXT_PUBLIC_APP_URL=http://localhost:3000\\n\\n' +\r\n  '# Supabase\\nNEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co\\nNEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY\\nSUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_KEY\\n\\n' +\r\n  '# Stripe\\nSTRIPE_SECRET_KEY=sk_test_YOUR_KEY\\nNEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_KEY\\nSTRIPE_WEBHOOK_SECRET=whsec_YOUR_SECRET\\n\\n' +\r\n  '# Stripe Price IDs\\nSTRIPE_STARTER_PRICE_ID=price_YOUR_STARTER_ID\\nSTRIPE_PRO_PRICE_ID=price_YOUR_PRO_ID\\n';\r\n\r\nconst readme = '# ' + d.productName + '\\n\\n> ' + d.tagline + '\\n\\n## Problem\\n' + d.problem + '\\n\\n## Solution\\n' + d.solution + '\\n\\n## Quick Start\\n\\n```bash\\nnpm install\\nnpm run dev\\n```\\n\\nOpen [http://localhost:3000](http://localhost:3000)\\n\\n## Tech Stack\\n\\n- **Framework:** Next.js 14 App Router\\n- **Language:** TypeScript\\n- **Styling:** Tailwind CSS\\n- **Database:** Supabase (PostgreSQL)\\n- **Auth:** Supabase Auth\\n- **Payments:** Stripe\\n- **Deploy:** Vercel\\n\\n## Features\\n\\n' + (d.features || []).map(f => '- ' + f).join('\\n') + '\\n\\n## Setup\\n\\n1. Copy `.env.example` to `.env.local`\\n2. Create a [Supabase](https://supabase.com) project\\n3. Run `supabase/schema.sql` in Supabase SQL editor\\n4. Create a [Stripe](https://stripe.com) account + products\\n5. Fill in your `.env.local`\\n6. `npm run dev`\\n\\n## Deploy to Vercel\\n\\n```bash\\nnpx vercel --prod\\n```\\n\\nSet environment variables in Vercel dashboard.\\n\\n## Pricing\\n\\n' + (d.pricing || []).map(p => '- **' + p.plan + ':** ' + p.price).join('\\n') + '\\n\\n## Domain\\n\\nSuggested: `' + (d.domain || 'your-domain.com') + '`\\n';\r\n\r\nreturn [{\r\n  json: {\r\n    ...d,\r\n    corePageCode: corePage,\r\n    apiRouteCode: apiRoute,\r\n    apiItemRouteCode: apiItemRoute,\r\n    schemaCode: schema,\r\n    envExampleCode: envExample,\r\n    readmeCode: readme\r\n  }\r\n}];\r\n"
+      },
+      "id": "gen-core",
+      "name": "4. Ядро + API + БД",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\r\nconst path = require('path');\r\nconst d = $input.first().json;\r\n\r\nconst slug = (d.productName || 'product').toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');\r\nconst projectDir = 'C:/autonomy-launches/' + slug;\r\nconst entity = d.mainEntity || 'items';\r\n\r\n// Build file map\r\nconst files = [\r\n  { path: 'package.json',        content: d.packageJsonCode },\r\n  { path: 'tsconfig.json',       content: d.tsConfigCode },\r\n  { path: 'next.config.ts',      content: d.nextConfigCode },\r\n  { path: 'tailwind.config.ts',  content: d.tailwindConfigCode },\r\n  { path: 'postcss.config.js',   content: d.postcssConfigCode },\r\n  { path: 'app/globals.css',     content: d.globalsCode },\r\n  { path: 'app/layout.tsx',      content: d.layoutCode },\r\n  { path: 'app/page.tsx',        content: d.landingCode },\r\n  { path: 'app/dashboard/layout.tsx',   content: d.dashLayoutCode },\r\n  { path: 'app/dashboard/page.tsx',     content: d.dashPageCode },\r\n  { path: 'app/dashboard/settings/page.tsx', content: d.settingsPageCode },\r\n  { path: 'app/dashboard/' + entity + '/page.tsx', content: d.corePageCode },\r\n  { path: 'app/api/' + entity + '/route.ts',       content: d.apiRouteCode },\r\n  { path: 'app/api/' + entity + '/[id]/route.ts',  content: d.apiItemRouteCode },\r\n  { path: 'supabase/schema.sql', content: d.schemaCode },\r\n  { path: '.env.example',        content: d.envExampleCode },\r\n  { path: 'README.md',           content: d.readmeCode },\r\n].filter(f => f.content);\r\n\r\n// Save all files\r\nif (!fs.existsSync(projectDir)) fs.mkdirSync(projectDir, { recursive: true });\r\n\r\nconst savedFiles = [];\r\nfor (const file of files) {\r\n  const fullPath = path.join(projectDir, file.path);\r\n  const dir = path.dirname(fullPath);\r\n  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\r\n  fs.writeFileSync(fullPath, file.content, 'utf8');\r\n  savedFiles.push(file.path);\r\n}\r\n\r\n// Save brief (metadata without code)\r\nconst brief = {\r\n  productName: d.productName, tagline: d.tagline,\r\n  problem: d.problem, solution: d.solution,\r\n  targetAudience: d.targetAudience, domain: d.domain,\r\n  pricing: d.pricing, features: d.features,\r\n  techStack: d.techStack, mainEntity: d.mainEntity,\r\n  ideaId: d.ideaId, ideaTitle: d.ideaTitle,\r\n  generatedAt: d.generatedAt, slug, savedFiles\r\n};\r\nfs.writeFileSync(path.join(projectDir, 'brief.json'), JSON.stringify(brief, null, 2), 'utf8');\r\n\r\n// Update registry\r\nif (!fs.existsSync('C:/autonomy-data')) fs.mkdirSync('C:/autonomy-data', { recursive: true });\r\nconst registryPath = 'C:/autonomy-data/launches.json';\r\nlet launches = [];\r\ntry { launches = JSON.parse(fs.readFileSync(registryPath, 'utf8')); } catch(e) {}\r\n\r\nconst existing = launches.findIndex(l => l.slug === slug);\r\nconst entry = {\r\n  id: existing >= 0 ? launches[existing].id : Date.now(),\r\n  ideaId: d.ideaId, ideaTitle: d.ideaTitle,\r\n  productName: d.productName, tagline: d.tagline,\r\n  slug, domain: d.domain, status: 'generated',\r\n  projectDir, savedFiles,\r\n  generatedAt: d.generatedAt\r\n};\r\nif (existing >= 0) launches[existing] = entry;\r\nelse launches.push(entry);\r\nfs.writeFileSync(registryPath, JSON.stringify(launches, null, 2), 'utf8');\r\n\r\nreturn [{\r\n  json: {\r\n    success: true,\r\n    productName: d.productName,\r\n    tagline: d.tagline,\r\n    slug, projectDir,\r\n    domain: d.domain,\r\n    savedFiles,\r\n    filesCount: savedFiles.length,\r\n    generatedAt: d.generatedAt\r\n  }\r\n}];\r\n"
+      },
+      "id": "save-launch",
+      "name": "5. Сохранить проект",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
         300
       ]
     },
@@ -54,7 +93,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        900,
+        1560,
         300
       ]
     }
@@ -64,29 +103,62 @@
       "main": [
         [
           {
-            "node": "Claude: Генерировать продукт (https)",
+            "node": "1. Бриф и архитектура",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Сохранить проект": {
+    "1. Бриф и архитектура": {
+      "main": [
+        [
+          {
+            "node": "2. Лендинг + конфиги",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Лендинг + конфиги": {
+      "main": [
+        [
+          {
+            "node": "3. Дашборд + настройки",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Дашборд + настройки": {
+      "main": [
+        [
+          {
+            "node": "4. Ядро + API + БД",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Ядро + API + БД": {
+      "main": [
+        [
+          {
+            "node": "5. Сохранить проект",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Сохранить проект": {
       "main": [
         [
           {
             "node": "Ответить клиенту",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Claude: Генерировать продукт (https)": {
-      "main": [
-        [
-          {
-            "node": "Сохранить проект",
             "type": "main",
             "index": 0
           }
