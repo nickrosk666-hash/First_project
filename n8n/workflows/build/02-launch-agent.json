@@ -1,0 +1,105 @@
+{
+  "name": "02 - Launch Agent (Запуск идеи)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "launch-idea",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook: Запустить идею",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "launch-idea-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract idea data from webhook payload\nconst body = $input.first().json.body || $input.first().json;\nreturn [{\n  json: {\n    ideaId: body.ideaId,\n    title: body.title,\n    description: body.description || '',\n    verdict: body.verdict,\n    scores: body.scores || {},\n    sourceUrl: body.sourceUrl || ''\n  }\n}];"
+      },
+      "id": "extract-idea",
+      "name": "Извлечь данные идеи",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "PASTE_YOUR_API_KEY_HERE" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 4000,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"You are a startup builder. Create a complete product brief and landing page for this SaaS idea.\\n\\nIdea: {{ $json.title }}\\nDescription: {{ $json.description }}\\n\\nGenerate a JSON response with this EXACT structure:\\n{\\n  \\\"productName\\\": \\\"Short catchy name\\\",\\n  \\\"tagline\\\": \\\"One line that sells\\\",\\n  \\\"problem\\\": \\\"The painful problem in 2 sentences\\\",\\n  \\\"solution\\\": \\\"How this product solves it in 2 sentences\\\",\\n  \\\"targetAudience\\\": \\\"Exactly who this is for\\\",\\n  \\\"pricing\\\": [{\\\"plan\\\": \\\"Starter\\\", \\\"price\\\": \\\"$29/mo\\\", \\\"features\\\": [\\\"feature1\\\", \\\"feature2\\\", \\\"feature3\\\"]}, {\\\"plan\\\": \\\"Pro\\\", \\\"price\\\": \\\"$79/mo\\\", \\\"features\\\": [\\\"feature1\\\", \\\"feature2\\\", \\\"feature3\\\", \\\"feature4\\\"]}],\\n  \\\"features\\\": [\\\"Feature 1 with benefit\\\", \\\"Feature 2 with benefit\\\", \\\"Feature 3 with benefit\\\", \\\"Feature 4 with benefit\\\", \\\"Feature 5 with benefit\\\", \\\"Feature 6 with benefit\\\"],\\n  \\\"techStack\\\": [\\\"Next.js\\\", \\\"TypeScript\\\", \\\"Tailwind CSS\\\", \\\"Stripe\\\", \\\"Supabase\\\"],\\n  \\\"mvpSteps\\\": [{\\\"day\\\": \\\"День 1-2\\\", \\\"task\\\": \\\"Setup & Auth\\\"}, {\\\"day\\\": \\\"День 3-5\\\", \\\"task\\\": \\\"Core feature\\\"}, {\\\"day\\\": \\\"День 6-7\\\", \\\"task\\\": \\\"Payments & Launch\\\"}],\\n  \\\"landingPageHtml\\\": \\\"FULL single-file HTML landing page with inline CSS (dark theme, modern design, responsive). Include hero section with headline+CTA, problem section, features grid, pricing cards, footer. Make it look professional and ready to publish.\\\",\\n  \\\"domain\\\": \\\"suggested-domain-name.com\\\"\\n}\\n\\nReply ONLY with valid JSON.\"\n    }\n  ]\n}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "claude-generate",
+      "name": "Claude: Генерировать продукт",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Claude response and extract product data\nconst response = $input.first().json;\nlet product = null;\n\ntry {\n  if (response.content && response.content[0] && response.content[0].text) {\n    const text = response.content[0].text.trim();\n    const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n    if (jsonMatch) product = JSON.parse(jsonMatch[0]);\n  }\n} catch(e) {\n  return [{ json: { error: 'Failed to parse Claude response', raw: response } }];\n}\n\nif (!product) return [{ json: { error: 'No product data generated' } }];\n\nconst ideaData = $('Извлечь данные идеи').item.json;\n\nreturn [{\n  json: {\n    ...product,\n    ideaId: ideaData.ideaId,\n    ideaTitle: ideaData.title,\n    generatedAt: new Date().toISOString(),\n    status: 'generated'\n  }\n}];"
+      },
+      "id": "parse-product",
+      "name": "Распарсить продукт",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Save landing page HTML and product brief to disk\nconst fs = require('fs');\nconst path = require('path');\nconst product = $input.first().json;\n\nif (product.error) return [{ json: product }];\n\n// Create project folder\nconst slug = (product.productName || 'product').toLowerCase().replace(/[^a-z0-9]/g, '-');\nconst projectDir = `C:/autonomy-launches/${slug}`;\n\nif (!fs.existsSync(projectDir)) {\n  fs.mkdirSync(projectDir, { recursive: true });\n}\n\n// Save landing page HTML\nif (product.landingPageHtml) {\n  fs.writeFileSync(`${projectDir}/index.html`, product.landingPageHtml, 'utf8');\n}\n\n// Save product brief JSON\nconst brief = { ...product };\ndelete brief.landingPageHtml;\nfs.writeFileSync(`${projectDir}/brief.json`, JSON.stringify(brief, null, 2), 'utf8');\n\n// Save README\nconst readme = `# ${product.productName}\\n\\n${product.tagline}\\n\\n## Problem\\n${product.problem}\\n\\n## Solution\\n${product.solution}\\n\\n## Target Audience\\n${product.targetAudience}\\n\\n## Tech Stack\\n${(product.techStack || []).join(', ')}\\n\\n## MVP Steps\\n${(product.mvpSteps || []).map(s => `- **${s.day}**: ${s.task}`).join('\\n')}\\n\\n## Launch Checklist\\n- [ ] Buy domain: ${product.domain}\\n- [ ] Set up Next.js project\\n- [ ] Deploy to Vercel\\n- [ ] Connect Stripe\\n- [ ] Launch on ProductHunt\\n`;\nfs.writeFileSync(`${projectDir}/README.md`, readme, 'utf8');\n\n// Update launches registry\nconst registryPath = 'C:/autonomy-data/launches.json';\nlet launches = [];\ntry {\n  launches = JSON.parse(fs.readFileSync(registryPath, 'utf8'));\n} catch(e) {}\n\nlaunches.push({\n  id: Date.now(),\n  ideaId: product.ideaId,\n  ideaTitle: product.ideaTitle,\n  productName: product.productName,\n  tagline: product.tagline,\n  slug,\n  status: 'generated',\n  projectDir,\n  generatedAt: product.generatedAt\n});\n\nif (!fs.existsSync('C:/autonomy-data')) fs.mkdirSync('C:/autonomy-data', { recursive: true });\nfs.writeFileSync(registryPath, JSON.stringify(launches, null, 2), 'utf8');\n\nreturn [{\n  json: {\n    success: true,\n    productName: product.productName,\n    tagline: product.tagline,\n    slug,\n    projectDir,\n    landingPageUrl: `file:///${projectDir}/index.html`,\n    domain: product.domain,\n    generatedAt: product.generatedAt\n  }\n}];"
+      },
+      "id": "save-launch",
+      "name": "Сохранить проект",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "webhook-response",
+      "name": "Ответить клиенту",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Запустить идею": {
+      "main": [[{ "node": "Извлечь данные идеи", "type": "main", "index": 0 }]]
+    },
+    "Извлечь данные идеи": {
+      "main": [[{ "node": "Claude: Генерировать продукт", "type": "main", "index": 0 }]]
+    },
+    "Claude: Генерировать продукт": {
+      "main": [[{ "node": "Распарсить продукт", "type": "main", "index": 0 }]]
+    },
+    "Распарсить продукт": {
+      "main": [[{ "node": "Сохранить проект", "type": "main", "index": 0 }]]
+    },
+    "Сохранить проект": {
+      "main": [[{ "node": "Ответить клиенту", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["launch", "builder"]
+}
