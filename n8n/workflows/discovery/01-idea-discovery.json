@@ -57,7 +57,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Parse all RSS/Reddit sources into unified format\nconst items = [];\n\nfor (const input of $input.all()) {\n  const body = input.json.data || input.json.body || '';\n  const nodeName = input.pairedItem ? '' : '';\n\n  // Try RSS XML parsing\n  if (typeof body === 'string' && body.includes('<item>')) {\n    const regex = /<item>[\\s\\S]*?<title>(?:<!\\[CDATA\\[)?([^<\\]]+)(?:\\]\\]>)?<\\/title>[\\s\\S]*?<link>([^<]+)<\\/link>[\\s\\S]*?<\\/item>/g;\n    let match;\n    while ((match = regex.exec(body)) !== null) {\n      items.push({\n        json: {\n          title: match[1].trim(),\n          url: match[2].trim(),\n          source: 'Google News',\n          raw: match[1].trim()\n        }\n      });\n    }\n  }\n\n  // Try Reddit JSON\n  if (input.json && input.json.data && input.json.data.children) {\n    for (const child of input.json.data.children) {\n      const post = child.data;\n      if (post && post.title) {\n        items.push({\n          json: {\n            title: post.title,\n            url: `https://reddit.com${post.permalink}`,\n            source: 'Reddit r/SaaS',\n            raw: (post.selftext || post.title).slice(0, 200)\n          }\n        });\n      }\n    }\n  }\n}\n\n// Filter and deduplicate\nconst keywords = ['saas', 'software', 'automation', 'ai', 'startup', 'niche', 'vertical', 'workflow', 'crm', 'api', 'platform', 'subscription', 'tool', 'app'];\nconst seen = new Set();\nconst filtered = [];\n\nfor (const item of items) {\n  const title = item.json.title.toLowerCase();\n  if (!title || seen.has(title)) continue;\n  if (!keywords.some(kw => title.includes(kw))) continue;\n  seen.add(title);\n  filtered.push(item);\n}\n\nreturn filtered.slice(0, 15);"
+        "jsCode": "// Parse all RSS/Reddit sources into unified format\nconst items = [];\n\nfor (const input of $input.all()) {\n  const body = input.json.data || input.json.body || '';\n  const nodeName = input.pairedItem ? '' : '';\n\n  // Try RSS XML parsing\n  if (typeof body === 'string' && body.includes('<item>')) {\n    const regex = /<item>[\\s\\S]*?<title>(?:<!\\[CDATA\\[)?([^<\\]]+)(?:\\]\\]>)?<\\/title>[\\s\\S]*?<link>([^<]+)<\\/link>[\\s\\S]*?<\\/item>/g;\n    let match;\n    while ((match = regex.exec(body)) !== null) {\n      items.push({\n        json: {\n          title: match[1].trim(),\n          url: match[2].trim(),\n          source: 'Google News',\n          raw: match[1].trim()\n        }\n      });\n    }\n  }\n\n  // Try Reddit JSON\n  if (input.json && input.json.data && input.json.data.children) {\n    for (const child of input.json.data.children) {\n      const post = child.data;\n      if (post && post.title) {\n        items.push({\n          json: {\n            title: post.title,\n            url: `https://reddit.com${post.permalink}`,\n            source: 'Reddit r/SaaS',\n            raw: (post.selftext || post.title).slice(0, 200)\n          }\n        });\n      }\n    }\n  }\n}\n\n// Filter and deduplicate\nconst keywords = ['saas', 'software', 'automation', 'ai', 'startup', 'niche', 'vertical', 'workflow', 'crm', 'api', 'platform', 'subscription', 'tool', 'app'];\nconst seen = new Set();\nconst filtered = [];\n\nfor (const item of items) {\n  const title = item.json.title.toLowerCase();\n  if (!title || seen.has(title)) continue;\n  if (!keywords.some(kw => title.includes(kw))) continue;\n  seen.add(title);\n  filtered.push(item);\n}\n\nreturn filtered.slice(0, 5);"
       },
       "id": "parse-and-filter",
       "name": "Парсинг и фильтр",
@@ -80,7 +80,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 400,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Score this SaaS idea on 8 criteria (0-10 each). Idea: {{ $json.title }}\\n\\nCriteria: market size, automation potential, pain intensity, competition (10=none), willingness to pay, profit margin, build complexity (10=very easy), market timing.\\n\\nReply ONLY with JSON, no other text: {\\\"market\\\":7,\\\"automation\\\":8,\\\"pain\\\":6,\\\"competition\\\":5,\\\"willingnessToPay\\\":7,\\\"margin\\\":8,\\\"build\\\":7,\\\"timing\\\":6,\\\"summary\\\":\\\"One sentence in Russian\\\"}\"\n    }\n  ]\n}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          }
+        }
       },
       "id": "claude-score",
       "name": "Claude: Скоринг",
