@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { VerdictBadge } from "@/components/verdict-badge";
 import { SOURCE_LABELS } from "@/lib/constants";
-import { mockIdeas } from "@/lib/mock-data";
+import { useIdeas } from "@/hooks/use-ideas";
 import type { Verdict } from "@/lib/types";
 
 type VerdictFilter = Verdict | "all";
@@ -30,8 +30,9 @@ const VERDICT_FILTER_LABELS: Record<VerdictFilter, string> = {
 export default function IdeasPage() {
   const [verdictFilter, setVerdictFilter] = useState<VerdictFilter>("all");
   const [sortDesc, setSortDesc] = useState(true);
+  const { ideas, loading, source } = useIdeas();
 
-  const filtered = mockIdeas
+  const filtered = ideas
     .filter((i) => verdictFilter === "all" || i.verdict === verdictFilter)
     .sort((a, b) =>
       sortDesc
@@ -43,7 +44,14 @@ export default function IdeasPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Идеи</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight">Идеи</h1>
+        {!loading && (
+          <span className="text-xs text-muted-foreground">
+            {source === "live" ? `🟢 ${ideas.length} живых идей` : `⚪ mock-данные`}
+          </span>
+        )}
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
@@ -101,12 +109,16 @@ export default function IdeasPage() {
                 </TableCell>
               </TableRow>
             ))}
-            {filtered.length === 0 && (
+            {loading && (
               <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="text-center text-muted-foreground"
-                >
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  Загрузка идей...
+                </TableCell>
+              </TableRow>
+            )}
+            {!loading && filtered.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
                   Нет идей по выбранному фильтру.
                 </TableCell>
               </TableRow>

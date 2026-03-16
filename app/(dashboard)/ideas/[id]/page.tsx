@@ -22,7 +22,7 @@ import { VerdictBadge } from "@/components/verdict-badge";
 import { ScoreBar } from "@/components/score-bar";
 import { LaunchButton } from "@/components/launch-button";
 import { SOURCE_LABELS, SCORE_LABELS } from "@/lib/constants";
-import { mockIdeas } from "@/lib/mock-data";
+import { useIdea } from "@/hooks/use-ideas";
 
 export default function IdeaDetailPage({
   params,
@@ -30,7 +30,16 @@ export default function IdeaDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const idea = mockIdeas.find((i) => i.id === Number(id));
+  const { idea, loading } = useIdea(Number(id));
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-48 text-muted-foreground">
+        Загрузка...
+      </div>
+    );
+  }
+
   if (!idea) return notFound();
 
   const scoreEntries = Object.entries(idea.scores) as [string, number][];
