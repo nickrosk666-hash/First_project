@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { mockIdeas } from '@/lib/mock-data';
 import fs from 'fs';
 
-const IDEAS_FILE = process.env.IDEAS_FILE_PATH || 'C:/AI Cloude/Projects/autonomy/data/ideas.json';
+const IDEAS_FILE = process.env.IDEAS_FILE_PATH || 'C:/autonomy-data/ideas.json';
 
 function getIdeasFromFile() {
   try {
