@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Rocket,
   ExternalLink,
@@ -11,6 +12,7 @@ import {
   CheckCircle2,
   Package,
   Clock,
+  Code2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,6 +73,7 @@ const SELL_STEPS = [
 ];
 
 export default function LaunchesPage() {
+  const router = useRouter();
   const [launches, setLaunches] = useState<Launch[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -156,10 +159,10 @@ export default function LaunchesPage() {
                     size="sm"
                     variant="outline"
                     className="gap-1.5 text-xs"
-                    onClick={() => window.open(`file:///${launch.projectDir}/index.html`)}
+                    onClick={() => router.push(`/launches/${launch.slug}`)}
                   >
-                    <ExternalLink className="size-3" />
-                    Лендинг
+                    <Code2 className="size-3" />
+                    Редактировать
                   </Button>
                   <Button
                     size="sm"
