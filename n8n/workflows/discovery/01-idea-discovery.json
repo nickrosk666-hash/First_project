@@ -65,51 +65,13 @@
     },
     {
       "parameters": {
-        "jsCode": "// Build Anthropic request body as a safe JSON string\nconst title = $json.title || '';\nconst prompt = 'Score this SaaS idea on 8 criteria (0-10 each). Idea: ' + title + '\\n\\nCriteria: market size (market), automation potential (automation), pain intensity (pain), low competition = high score (competition), willingness to pay (willingnessToPay), profit margin (margin), build complexity - low = easy (build), market timing (timing).\\n\\nReply ONLY with this JSON structure, no markdown, no extra text:\\n{\"market\":7,\"automation\":8,\"pain\":6,\"competition\":5,\"willingnessToPay\":7,\"margin\":8,\"build\":7,\"timing\":6,\"summary\":\"One sentence about this idea in Russian\"}';\n\nconst body = {\n  model: 'claude-haiku-4-5-20251001',\n  max_tokens: 400,\n  messages: [{ role: 'user', content: prompt }]\n};\n\nreturn [{\n  json: {\n    title: $json.title,\n    url: $json.url,\n    source: $json.source,\n    requestBody: JSON.stringify(body)\n  }\n}];"
+        "jsCode": "// ⚠️ ВСТАВЬ СВОЙ API КЛЮЧ ANTHROPIC ЗДЕСЬ:\nconst ANTHROPIC_API_KEY = 'PASTE_YOUR_KEY_HERE';\n\nconst title = $json.title || '';\nconst source = $json.source || '';\nconst url = $json.url || '';\n\nconst prompt = 'Score this SaaS idea on 8 criteria (0-10 each).\\n\\nIdea: ' + title + '\\n\\nCriteria:\\n- market: market size (10=huge)\\n- automation: AI automation potential (10=fully automated)\\n- pain: pain intensity (10=critical)\\n- competition: low competition = high score (10=no competition)\\n- willingnessToPay: willingness to pay (10=high)\\n- margin: profit margin (10=90%+)\\n- build: build complexity, low = easy MVP (10=very easy)\\n- timing: market timing (10=perfect now)\\n\\nReply ONLY with this exact JSON, no markdown:\\n{\"market\":7,\"automation\":8,\"pain\":6,\"competition\":5,\"willingnessToPay\":7,\"margin\":8,\"build\":7,\"timing\":6,\"summary\":\"One sentence about this idea in Russian\"}';\n\nconst response = await fetch('https://api.anthropic.com/v1/messages', {\n  method: 'POST',\n  headers: {\n    'x-api-key': ANTHROPIC_API_KEY,\n    'anthropic-version': '2023-06-01',\n    'content-type': 'application/json'\n  },\n  body: JSON.stringify({\n    model: 'claude-haiku-4-5-20251001',\n    max_tokens: 400,\n    messages: [{ role: 'user', content: prompt }]\n  })\n});\n\nif (!response.ok) {\n  const err = await response.text();\n  throw new Error('Anthropic error ' + response.status + ': ' + err);\n}\n\nconst data = await response.json();\nlet scoreData = null;\n\nif (data.content && data.content[0] && data.content[0].text) {\n  const text = data.content[0].text.trim();\n  const match = text.match(/\\{[\\s\\S]*?\\}/);\n  if (match) scoreData = JSON.parse(match[0]);\n}\n\nif (!scoreData) throw new Error('Could not parse Claude response: ' + JSON.stringify(data));\n\nconst weights = { market:0.15, automation:0.20, pain:0.15, competition:0.10, willingnessToPay:0.10, margin:0.10, build:0.10, timing:0.10 };\nlet composite = 0;\nfor (const [k, w] of Object.entries(weights)) composite += (scoreData[k] || 0) * w;\ncomposite = Math.round(composite * 10) / 10;\n\nlet verdict = 'KILL';\nif (composite >= 8.0) verdict = 'BUILD';\nelse if (composite >= 6.5) verdict = 'BET';\nelse if (composite >= 4.5) verdict = 'FLIP';\n\nreturn [{\n  json: {\n    id: Date.now() + Math.floor(Math.random() * 1000),\n    title,\n    description: scoreData.summary || '',\n    source,\n    sourceUrl: url,\n    scoreComposite: composite,\n    verdict,\n    verdictReason: scoreData.summary || '',\n    status: 'new',\n    discoveredAt: new Date().toISOString(),\n    scores: {\n      market: scoreData.market || 0,\n      automation: scoreData.automation || 0,\n      pain: scoreData.pain || 0,\n      competition: scoreData.competition || 0,\n      willingnessToPay: scoreData.willingnessToPay || 0,\n      margin: scoreData.margin || 0,\n      build: scoreData.build || 0,\n      timing: scoreData.timing || 0\n    }\n  }\n}];"
       },
-      "id": "build-request",
-      "name": "Подготовить запрос",
+      "id": "claude-score",
+      "name": "Claude: Скоринг (fetch)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [960, 300]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "x-api-key", "value": "PASTE_YOUR_API_KEY_HERE" },
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "string",
-        "body": "={{ $json.requestBody }}",
-        "options": {
-          "timeout": 30000,
-          "batching": {
-            "batch": { "batchSize": 1, "batchInterval": 3000 }
-          }
-        }
-      },
-      "id": "claude-score",
-      "name": "Claude: Скоринг",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1200, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  try {\n    const response = item.json;\n    let scoreData = null;\n\n    if (response.content && response.content[0] && response.content[0].text) {\n      const text = response.content[0].text.trim();\n      const jsonMatch = text.match(/\\{[\\s\\S]*?\\}/);\n      if (jsonMatch) scoreData = JSON.parse(jsonMatch[0]);\n    }\n\n    if (!scoreData) continue;\n\n    const weights = { market:0.15, automation:0.20, pain:0.15, competition:0.10, willingnessToPay:0.10, margin:0.10, build:0.10, timing:0.10 };\n    let composite = 0;\n    for (const [k, w] of Object.entries(weights)) composite += (scoreData[k] || 0) * w;\n    composite = Math.round(composite * 10) / 10;\n\n    let verdict = 'KILL';\n    if (composite >= 8.0) verdict = 'BUILD';\n    else if (composite >= 6.5) verdict = 'BET';\n    else if (composite >= 4.5) verdict = 'FLIP';\n\n    const sourceIdea = $('Подготовить запрос').item.json;\n\n    results.push({\n      json: {\n        id: Date.now() + Math.floor(Math.random() * 1000),\n        title: sourceIdea.title,\n        description: scoreData.summary || '',\n        source: sourceIdea.source,\n        sourceUrl: sourceIdea.url || '',\n        scoreComposite: composite,\n        verdict,\n        verdictReason: scoreData.summary || '',\n        status: 'new',\n        discoveredAt: new Date().toISOString(),\n        scores: {\n          market: scoreData.market || 0,\n          automation: scoreData.automation || 0,\n          pain: scoreData.pain || 0,\n          competition: scoreData.competition || 0,\n          willingnessToPay: scoreData.willingnessToPay || 0,\n          margin: scoreData.margin || 0,\n          build: scoreData.build || 0,\n          timing: scoreData.timing || 0\n        }\n      }\n    });\n  } catch(e) {}\n}\n\nreturn results;"
-      },
-      "id": "calc-score",
-      "name": "Рассчитать балл",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1440, 300]
     },
     {
       "parameters": {
@@ -119,7 +81,7 @@
       "name": "Сохранить в файл",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1680, 300]
+      "position": [1200, 300]
     }
   ],
   "connections": {
@@ -133,10 +95,8 @@
     "Google News: SaaS": { "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]] },
     "Google News: Vertical": { "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]] },
     "Reddit r/SaaS": { "main": [[{ "node": "Парсинг и фильтр", "type": "main", "index": 0 }]] },
-    "Парсинг и фильтр": { "main": [[{ "node": "Подготовить запрос", "type": "main", "index": 0 }]] },
-    "Подготовить запрос": { "main": [[{ "node": "Claude: Скоринг", "type": "main", "index": 0 }]] },
-    "Claude: Скоринг": { "main": [[{ "node": "Рассчитать балл", "type": "main", "index": 0 }]] },
-    "Рассчитать балл": { "main": [[{ "node": "Сохранить в файл", "type": "main", "index": 0 }]] }
+    "Парсинг и фильтр": { "main": [[{ "node": "Claude: Скоринг (fetch)", "type": "main", "index": 0 }]] },
+    "Claude: Скоринг (fetch)": { "main": [[{ "node": "Сохранить в файл", "type": "main", "index": 0 }]] }
   },
   "active": false,
   "settings": { "executionOrder": "v1", "saveManualExecutions": true },
