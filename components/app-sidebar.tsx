@@ -11,6 +11,10 @@ import {
   BarChart3,
   DollarSign,
   Activity,
+  Star,
+  Trash2,
+  Columns3,
+  GitCompare,
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,6 +33,10 @@ const navItems = [
   { title: "Обзор", href: "/", icon: LayoutDashboard },
   { title: "Агенты", href: "/agents", icon: Bot },
   { title: "Идеи", href: "/ideas", icon: Lightbulb },
+  { title: "Pipeline", href: "/pipeline", icon: Columns3 },
+  { title: "Сравнение", href: "/compare", icon: GitCompare },
+  { title: "Избранное", href: "/favorites", icon: Star },
+  { title: "Удалённые", href: "/deleted", icon: Trash2 },
   { title: "Запуски", href: "/launches", icon: Rocket },
   { title: "Код", href: "/code", icon: Code2 },
   { title: "Метрики", href: "/metrics", icon: BarChart3 },

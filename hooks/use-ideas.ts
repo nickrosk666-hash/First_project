@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Idea } from "@/lib/types";
 
-export function useIdeas() {
+export function useIdeas(type?: "favorites" | "deleted") {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<"live" | "mock">("mock");
 
-  useEffect(() => {
-    fetch("/api/ideas")
+  const url = type ? `/api/ideas?type=${type}` : "/api/ideas";
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetch(url)
       .then((r) => r.json())
       .then((data) => {
         setIdeas(data.ideas ?? []);
@@ -17,16 +20,18 @@ export function useIdeas() {
       })
       .catch(() => setIdeas([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [url]);
 
-  return { ideas, loading, source };
+  useEffect(() => { load(); }, [load]);
+
+  return { ideas, loading, source, reload: load };
 }
 
 export function useIdea(id: number) {
   const [idea, setIdea] = useState<Idea | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     fetch(`/api/ideas/${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => setIdea(data))
@@ -34,5 +39,18 @@ export function useIdea(id: number) {
       .finally(() => setLoading(false));
   }, [id]);
 
-  return { idea, loading };
+  useEffect(() => { load(); }, [load]);
+
+  async function patch(body: Record<string, unknown>) {
+    const res = await fetch(`/api/ideas/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const updated = await res.json();
+    setIdea(updated);
+    return updated as Idea;
+  }
+
+  return { idea, loading, patch };
 }

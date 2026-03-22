@@ -161,8 +161,21 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 15.5px;
+    line-height: 1.7;
+    letter-spacing: 0.012em;
+    word-spacing: 0.04em;
   }
   html {
     @apply font-sans;
+  }
+  /* Better readability for paragraphs */
+  p, li, td, th {
+    line-height: 1.75;
+  }
+  /* Slightly larger headings with more breathing room */
+  h1, h2, h3 {
+    letter-spacing: 0.01em;
+    line-height: 1.35;
   }
 }

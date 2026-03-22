@@ -13,9 +13,12 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { VerdictBadge } from "@/components/verdict-badge";
-import { SOURCE_LABELS } from "@/lib/constants";
+import { IdeaActions } from "@/components/idea-actions";
+import { HuntDialog } from "@/components/hunt-dialog";
+import { CheckDialog } from "@/components/check-dialog";
+import { HuntHistory } from "@/components/hunt-history";
 import { useIdeas } from "@/hooks/use-ideas";
-import type { Verdict } from "@/lib/types";
+import type { Idea, Verdict } from "@/lib/types";
 
 type VerdictFilter = Verdict | "all";
 
@@ -30,9 +33,12 @@ const VERDICT_FILTER_LABELS: Record<VerdictFilter, string> = {
 export default function IdeasPage() {
   const [verdictFilter, setVerdictFilter] = useState<VerdictFilter>("all");
   const [sortDesc, setSortDesc] = useState(true);
-  const { ideas, loading, source } = useIdeas();
+  const { ideas, loading, source, reload } = useIdeas();
+  const [localIdeas, setLocalIdeas] = useState<Idea[] | null>(null);
 
-  const filtered = ideas
+  const list = localIdeas ?? ideas;
+
+  const filtered = list
     .filter((i) => verdictFilter === "all" || i.verdict === verdictFilter)
     .sort((a, b) =>
       sortDesc
@@ -42,15 +48,28 @@ export default function IdeasPage() {
 
   const verdicts: VerdictFilter[] = ["all", "BUILD", "BET", "FLIP", "KILL"];
 
+  function handleUpdate(updated: Idea) {
+    const base = localIdeas ?? ideas;
+    if (updated.deletedAt) {
+      setLocalIdeas(base.filter((i) => i.id !== updated.id));
+    } else {
+      setLocalIdeas(base.map((i) => (i.id === updated.id ? updated : i)));
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Идеи</h1>
-        {!loading && (
-          <span className="text-xs text-muted-foreground">
-            {source === "live" ? `🟢 ${ideas.length} живых идей` : `⚪ mock-данные`}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <HuntDialog onComplete={() => { setLocalIdeas(null); reload(); }} />
+          <CheckDialog onComplete={() => { setLocalIdeas(null); reload(); }} />
+          {!loading && (
+            <span className="text-xs text-muted-foreground">
+              {source === "live" ? `${ideas.length} идей` : `mock-данные`}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -68,57 +87,61 @@ export default function IdeasPage() {
         ))}
       </div>
 
+      {/* Hunt history */}
+      <HuntHistory />
+
       {/* Table */}
-      <Card>
+      <Card className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Название</TableHead>
-              <TableHead className="w-24">Источник</TableHead>
               <TableHead
-                className="w-20 cursor-pointer select-none text-right"
+                className="w-28 cursor-pointer select-none text-right whitespace-nowrap"
                 onClick={() => setSortDesc(!sortDesc)}
               >
-                Балл {sortDesc ? "\u2193" : "\u2191"}
+                Балл {sortDesc ? "↓" : "↑"}
               </TableHead>
-              <TableHead className="w-20">Вердикт</TableHead>
+              <TableHead className="w-24">Вердикт</TableHead>
+              <TableHead className="w-16" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((idea) => (
               <TableRow key={idea.id}>
-                <TableCell>
+                <TableCell className="py-3">
                   <Link
                     href={`/ideas/${idea.id}`}
-                    className="font-medium hover:underline"
+                    className="font-semibold hover:underline leading-snug"
                   >
+                    {idea.isFavorite && <span className="text-amber-500 mr-1">★</span>}
                     {idea.title}
                   </Link>
-                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+                  <p className="mt-1 text-sm text-muted-foreground line-clamp-1 leading-snug">
                     {idea.verdictReason}
                   </p>
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {SOURCE_LABELS[idea.source] ?? idea.source}
-                </TableCell>
-                <TableCell className="text-right tabular-nums font-medium">
+                <TableCell className="text-right tabular-nums font-semibold text-base whitespace-nowrap">
                   {idea.scoreComposite.toFixed(1)}
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   <VerdictBadge verdict={idea.verdict} />
+                </TableCell>
+                <TableCell className="py-2">
+                  <IdeaActions idea={idea} onUpdate={handleUpdate} size="sm" />
                 </TableCell>
               </TableRow>
             ))}
             {loading && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                   Загрузка идей...
                 </TableCell>
               </TableRow>
             )}
             {!loading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                   Нет идей по выбранному фильтру.
                 </TableCell>
               </TableRow>

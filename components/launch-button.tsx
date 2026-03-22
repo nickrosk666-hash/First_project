@@ -275,11 +275,9 @@ export function LaunchButton({
                 </Button>
               )}
               {state === "launched" && (
-                <Button variant="outline" className="gap-1.5" asChild>
-                  <Link href="/launches" onClick={handleClose}>
-                    <Rocket className="size-4" />
-                    Все запуски
-                  </Link>
+                <Button variant="outline" className="gap-1.5" render={<Link href="/launches" onClick={handleClose} />}>
+                  <Rocket className="size-4" />
+                  Все запуски
                 </Button>
               )}
               <Button onClick={handleClose}>Закрыть</Button>

@@ -1,7 +1,7 @@
 export type AgentType = "discovery" | "validator" | "builder" | "launcher" | "operator";
 export type AgentStatus = "running" | "paused" | "stopped" | "error" | "idle";
 export type Verdict = "BUILD" | "BET" | "FLIP" | "KILL";
-export type IdeaStatus = "raw" | "pending_scoring" | "scored" | "validated" | "rejected" | "building";
+export type IdeaStatus = "raw" | "pending_scoring" | "scored" | "validated" | "rejected" | "building" | "launched";
 
 export interface Agent {
   id: string;
@@ -31,6 +31,9 @@ export interface Idea {
   verdictReason: string;
   status: IdeaStatus;
   discoveredAt: string;
+  isFavorite?: boolean;
+  deletedAt?: string | null;
+  scoreReasoning?: Record<string, { value: number; reason: string }> & { risks?: string[]; researchSummary?: string } | null;
   scores: {
     market: number;
     automation: number;

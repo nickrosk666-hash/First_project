@@ -2,7 +2,7 @@
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { use } from "react";
+import { use, useState, useEffect } from "react";
 import {
   ArrowLeft,
   ExternalLink,
@@ -14,6 +14,8 @@ import {
   Users,
   Layers,
   CircleDot,
+  RefreshCw,
+  Hammer,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,8 +23,12 @@ import { Badge } from "@/components/ui/badge";
 import { VerdictBadge } from "@/components/verdict-badge";
 import { ScoreBar } from "@/components/score-bar";
 import { LaunchButton } from "@/components/launch-button";
+import { IdeaChat } from "@/components/idea-chat";
+import { IdeaActions } from "@/components/idea-actions";
+import { CheckDialog } from "@/components/check-dialog";
 import { SOURCE_LABELS, SCORE_LABELS } from "@/lib/constants";
 import { useIdea } from "@/hooks/use-ideas";
+import type { Idea } from "@/lib/types";
 
 export default function IdeaDetailPage({
   params,
@@ -30,7 +36,33 @@ export default function IdeaDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { idea, loading } = useIdea(Number(id));
+  const { idea: fetchedIdea, loading } = useIdea(Number(id));
+  const [rescoredIdea, setRescoredIdea] = useState<Idea | null>(null);
+  const [rescoring, setRescoring] = useState(false);
+  const [rescoreError, setRescoreError] = useState<string | null>(null);
+
+  // Reset rescored idea when navigating to a different idea
+  useEffect(() => { setRescoredIdea(null); }, [id]);
+
+  async function rescore() {
+    const current = rescoredIdea ?? fetchedIdea;
+    if (!current) return;
+    setRescoring(true);
+    setRescoreError(null);
+    try {
+      const res = await fetch(`/api/ideas/${current.id}/rescore`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json();
+        setRescoreError(err.error ?? "Ошибка переоценки");
+      } else {
+        setRescoredIdea(await res.json());
+      }
+    } catch (e) {
+      setRescoreError(String(e));
+    } finally {
+      setRescoring(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -40,6 +72,7 @@ export default function IdeaDetailPage({
     );
   }
 
+  const idea = rescoredIdea ?? fetchedIdea;
   if (!idea) return notFound();
 
   const scoreEntries = Object.entries(idea.scores) as [string, number][];
@@ -59,13 +92,53 @@ export default function IdeaDetailPage({
           <h1 className="text-2xl font-semibold tracking-tight">{idea.title}</h1>
           <VerdictBadge verdict={idea.verdict} />
         </div>
-        {canLaunch && (
-          <LaunchButton
-            idea={idea}
-            disabled={idea.status === "building"}
+        <div className="flex items-center gap-2">
+          <Link href={`/ideas/${idea.id}/workspace`}>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <Hammer className="size-3.5" />
+              Воркспейс
+            </Button>
+          </Link>
+          <CheckDialog
+            prefillTitle={idea.title}
+            prefillDescription={idea.description}
+            ideaId={idea.id}
+            triggerLabel="Глубокая проверка"
+            onComplete={() => window.location.reload()}
           />
-        )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={rescore}
+            disabled={rescoring}
+            className="gap-1.5 text-xs"
+          >
+            <RefreshCw className={`size-3.5 ${rescoring ? "animate-spin" : ""}`} />
+            {rescoring ? "Анализирую..." : "Переоценить"}
+          </Button>
+          <IdeaActions idea={idea} />
+          {canLaunch && (
+            <LaunchButton
+              idea={idea}
+              disabled={idea.status === "building"}
+            />
+          )}
+        </div>
       </div>
+
+      {/* Rescore error */}
+      {rescoreError && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
+          {rescoreError}
+        </div>
+      )}
+
+      {/* Rescoring overlay hint */}
+      {rescoring && (
+        <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          Sonnet исследует рынок США/Канады/Австралии... Это займёт ~30 секунд.
+        </div>
+      )}
 
       {/* Summary card */}
       <Card>
@@ -222,6 +295,9 @@ export default function IdeaDetailPage({
             </CardContent>
           </Card>
 
+          {/* Chat with agent */}
+          <IdeaChat ideaId={idea.id} />
+
           {/* Launch CTA at the bottom */}
           {canLaunch && (
             <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
@@ -240,22 +316,54 @@ export default function IdeaDetailPage({
         </>
       )}
 
+      {/* Chat — shown for ideas without detail */}
+      {!detail && <IdeaChat ideaId={idea.id} />}
+
       {/* Score breakdown — always shown */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Детализация оценки</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Детализация оценки</CardTitle>
+            {!idea.scoreReasoning && (
+              <span className="text-xs text-muted-foreground italic">
+                Нажми «Переоценить» для глубокого анализа Sonnet
+              </span>
+            )}
+            {idea.scoreReasoning && (
+              <span className="text-xs text-green-500">✓ Глубокий анализ (Sonnet)</span>
+            )}
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {scoreEntries.map(([key, value]) => (
-            <div key={key}>
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {SCORE_LABELS[key] ?? key}
-                </span>
+        <CardContent className="space-y-5">
+          {scoreEntries.map(([key, value]) => {
+            const reasoning = idea.scoreReasoning?.[key];
+            return (
+              <div key={key}>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    {SCORE_LABELS[key] ?? key}
+                  </span>
+                  <span className="text-sm font-semibold tabular-nums">
+                    {typeof value === 'number' ? value.toFixed(1) : value}/10
+                  </span>
+                </div>
+                <ScoreBar value={value as number} />
+                {reasoning?.reason && (
+                  <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                    {reasoning.reason}
+                  </p>
+                )}
               </div>
-              <ScoreBar value={value} />
+            );
+          })}
+          {idea.scoreReasoning?.risks && idea.scoreReasoning.risks.length > 0 && (
+            <div className="mt-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 space-y-1">
+              <p className="text-xs font-semibold text-destructive">Ключевые риски</p>
+              {idea.scoreReasoning.risks.map((risk: string, i: number) => (
+                <p key={i} className="text-sm text-muted-foreground">• {risk}</p>
+              ))}
             </div>
-          ))}
+          )}
         </CardContent>
       </Card>
     </div>

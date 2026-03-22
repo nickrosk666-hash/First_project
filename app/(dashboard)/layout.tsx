@@ -12,9 +12,9 @@ export default function DashboardLayout({
     <SidebarProvider>
       <CommandPaletteProvider>
         <AppSidebar />
-        <SidebarInset>
+        <SidebarInset className="min-w-0">
           <AppTopBar />
-          <main className="flex-1 overflow-auto p-6 lg:p-8">{children}</main>
+          <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-6 lg:p-8">{children}</main>
         </SidebarInset>
       </CommandPaletteProvider>
     </SidebarProvider>
