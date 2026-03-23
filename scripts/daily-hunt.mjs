@@ -59,7 +59,7 @@ function firecrawlSearch(query, limit = 5) {
 function callClaude(prompt, maxTokens = 4000) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: maxTokens,
+      model: 'claude-haiku-4-5-20251001', max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
     });
     const req = https.request({
@@ -101,6 +101,21 @@ function sendTelegram(text) {
     req.write(body);
     req.end();
   });
+}
+
+// ── Safe JSON parse (handles bad escapes from LLM) ─────────────────
+function safeJsonParse(raw) {
+  try { return JSON.parse(raw); } catch {}
+  // Fix common LLM JSON issues: unescaped control chars, bad escapes
+  const cleaned = raw
+    .replace(/[\x00-\x1F\x7F]/g, ' ')           // remove control chars
+    .replace(/\\'/g, "'")                          // \' → '
+    .replace(/\\([^"\\\/bfnrtu])/g, '$1');         // bad escapes → literal
+  try { return JSON.parse(cleaned); } catch {}
+  // Last resort: extract arrays/objects more aggressively
+  try { return JSON.parse(cleaned.replace(/,\s*([}\]])/g, '$1')); } catch (e) {
+    throw new Error(`JSON parse failed: ${e.message}\nRaw (first 500): ${raw.slice(0, 500)}`);
+  }
 }
 
 // ── Scoring ────────────────────────────────────────────────────────────
@@ -203,7 +218,7 @@ JSON:
   const extractResp = await callClaude(extractPrompt);
   const extractMatch = extractResp.match(/\{[\s\S]*\}/);
   if (!extractMatch) throw new Error('Pass 1 failed');
-  const candidates = JSON.parse(extractMatch[0]).candidates || [];
+  const candidates = safeJsonParse(extractMatch[0]).candidates || [];
   console.log(`  Extracted ${candidates.length} candidates`);
 
   if (candidates.length === 0) {
@@ -218,27 +233,27 @@ JSON:
   // ── Phase 3: Strict scoring ──────────────────────────────────────
   console.log('Phase 3: Strict scoring...');
 
-  const scorePrompt = `Ты — строгий инвестиционный аналитик. Оцени ЧЕСТНО и КРИТИЧНО.
+  // Only score top 5 candidates to save tokens
+  const topCandidates = candidates.slice(0, 5);
+
+  const scorePrompt = `Строгий инвестиционный аналитик. Оцени ${topCandidates.length} идей ЧЕСТНО.
 
 КАНДИДАТЫ:
-${candidates.map((c, i) => `${i + 1}. "${c.title}" — ${c.description}\n   Спрос: ${c.source_evidence}\n   Конкуренты: ${c.competitors}\n   Монетизация: ${c.monetization}`).join('\n\n')}
+${topCandidates.map((c, i) => `${i + 1}. "${c.title}" — ${c.description}\n   Спрос: ${c.source_evidence}\n   Конкуренты: ${c.competitors}`).join('\n\n')}
 
-АНТИПРАВИЛА:
-- НЕ ставь 8+ без конкретных цифр (выручка, размер рынка, кол-во жалоб)
-- НЕ ставь 9+ по pain без цитат реальных людей
-- НЕ ставь 8+ по competition если есть игрок с >$10M funding
-- 70% micro-SaaS не превышают $1K MRR
-- Сомневаешься → ставь НИЖЕ
+ПРАВИЛА: НЕ ставь 8+ без цифр. Сомневаешься → НИЖЕ. 70% micro-SaaS < $1K MRR.
 
-Критерии: market(0-10), automation(0-10), pain(0-10), competition(0-10), willingnessToPay(0-10), margin(0-10), build(0-10), timing(0-10)
+Критерии (0-10): market, automation, pain, competition, willingnessToPay, margin, build, timing.
+Причины (reason) — КОРОТКО, 5-10 слов.
+features — максимум 4. launchSteps — максимум 3.
 
-JSON:
-{"scored":[{"title":"...","description":"...","format":"...","demand_evidence":"...","competitors":"...","monetization":"...","launch_cost":"...","potential_mrr":"...","scores":{"market":{"value":7,"reason":"..."},"automation":{"value":8,"reason":"..."},"pain":{"value":7,"reason":"..."},"competition":{"value":6,"reason":"..."},"willingnessToPay":{"value":5,"reason":"..."},"margin":{"value":8,"reason":"..."},"build":{"value":8,"reason":"..."},"timing":{"value":7,"reason":"..."}},"business_plan":{"problem":"...","valueProposition":"...","targetAudience":"...","features":["..."],"techStack":["..."],"pricing":"...","launchSteps":[{"step":1,"title":"...","description":"..."}],"estimatedTimeline":"...","estimatedCost":"..."},"risks":["...","..."]}]}`;
+ТОЛЬКО JSON:
+{"scored":[{"title":"...","description":"1 предложение","format":"...","demand_evidence":"кратко","competitors":"кратко","monetization":"кратко","launch_cost":"$X","potential_mrr":"$X","scores":{"market":{"value":7,"reason":"кратко"},"automation":{"value":8,"reason":"кратко"},"pain":{"value":7,"reason":"кратко"},"competition":{"value":6,"reason":"кратко"},"willingnessToPay":{"value":5,"reason":"кратко"},"margin":{"value":8,"reason":"кратко"},"build":{"value":8,"reason":"кратко"},"timing":{"value":7,"reason":"кратко"}},"business_plan":{"problem":"1 предложение","valueProposition":"1 предложение","targetAudience":"кратко","features":["max 4"],"techStack":["max 3"],"pricing":"кратко","launchSteps":[{"step":1,"title":"...","description":"кратко"}],"estimatedTimeline":"...","estimatedCost":"..."},"risks":["max 2"]}]}`;
 
-  const scoreResp = await callClaude(scorePrompt, 8000);
+  const scoreResp = await callClaude(scorePrompt, 16000);
   const scoreMatch = scoreResp.match(/\{[\s\S]*\}/);
   if (!scoreMatch) throw new Error('Pass 2 failed');
-  const scored = JSON.parse(scoreMatch[0]).scored || [];
+  const scored = safeJsonParse(scoreMatch[0]).scored || [];
 
   // ── Phase 4: Filter + dedup + save ───────────────────────────────
   console.log('Phase 4: Saving...');
